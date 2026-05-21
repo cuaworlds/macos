@@ -7,7 +7,11 @@ sync:
 
 # Run the benchmark CLI (model defaults to claude-haiku-4-5, tasks to smoke)
 bench model="claude-haiku-4-5" tasks="smoke":
-    uv run --package macosworld-usecomputer python -m benchmark.cli --model {{model}} --tasks {{tasks}}
+    uv run mw bench run --model {{model}} --tasks {{tasks}}
+
+# Open a macOS sandbox in the browser
+sandbox sandbox_id="":
+    uv run mw sandbox open {{ if sandbox_id != "" { "--sandbox-id " + sandbox_id } else { "" } }}
 
 # Start the dashboard dev server
 dashboard:

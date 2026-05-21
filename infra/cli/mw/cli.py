@@ -1,0 +1,235 @@
+from __future__ import annotations
+
+import json
+import os
+import sys
+import time
+import webbrowser
+from dataclasses import asdict
+from pathlib import Path
+
+import click
+
+from benchmark.config import MODEL_CONFIG
+from benchmark.runner import run_task
+from benchmark.task import TASKS_ROOT, load_tasks
+
+
+def _outputs_root() -> Path:
+    return Path(
+        os.environ.get(
+            "MACOSWORLD_OUTPUTS_DIR",
+            Path(__file__).resolve().parents[3] / "outputs",
+        )
+    ) / "runs"
+
+
+def _print_summary(model: str, results: list[dict]) -> None:
+    click.echo("\n" + "=" * 80)
+    click.echo(f"SUMMARY — {model} — {len(results)} tasks")
+    click.echo("=" * 80)
+    click.echo(
+        f"{'category':<20} {'task':<10} {'score':>5} {'steps':>5} "
+        f"{'in_tok':>8} {'out_tok':>8} {'cost$':>7} {'status':<10}"
+    )
+    for r in results:
+        click.echo(
+            f"{r['category']:<20} {r['task_id'][:8]:<10} {r['score']:>5} {r['n_steps']:>5} "
+            f"{r['input_tokens']:>8} {r['output_tokens']:>8} {r['cost_usd']:>7.4f} {r['status']:<10}"
+        )
+    total_score = sum(r["score"] for r in results)
+    total_in = sum(r["input_tokens"] for r in results)
+    total_out = sum(r["output_tokens"] for r in results)
+    total_cost = sum(r["cost_usd"] for r in results)
+    click.echo("-" * 80)
+    click.echo(
+        f"{'TOTAL':<20} {'':<10} {total_score:>5} {'':<5} "
+        f"{total_in:>8} {total_out:>8} {total_cost:>7.4f}"
+    )
+
+
+@click.group()
+def cli():
+    """macos-world benchmark CLI."""
+
+
+# ---------- bench ----------
+
+
+@cli.group()
+def bench():
+    """Run and inspect benchmark runs."""
+
+
+@bench.command("run")
+@click.option(
+    "--model",
+    required=True,
+    type=click.Choice(sorted(MODEL_CONFIG.keys())),
+    help="Model to evaluate.",
+)
+@click.option(
+    "--tasks",
+    "tasks_spec",
+    default="smoke",
+    show_default=True,
+    help="'smoke', 'all', or comma-separated task IDs.",
+)
+@click.option(
+    "--run-id",
+    default=None,
+    help="Override the run directory name (default: <model>-<ts>).",
+)
+def bench_run(model: str, tasks_spec: str, run_id: str | None) -> None:
+    """Run benchmark tasks against a model."""
+    if not os.getenv("USE_COMPUTER_API_KEY"):
+        raise click.UsageError("USE_COMPUTER_API_KEY not set")
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        raise click.UsageError("ANTHROPIC_API_KEY not set")
+
+    if tasks_spec == "smoke":
+        tasks = load_tasks(smoke=True)
+    elif tasks_spec == "all":
+        tasks = load_tasks()
+    else:
+        tasks = load_tasks(ids=[t.strip() for t in tasks_spec.split(",") if t.strip()])
+
+    run_id = run_id or f"{model}-{int(time.time())}"
+    run_dir = _outputs_root() / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    click.echo(f"Run dir: {run_dir}")
+    click.echo(f"Tasks  : {len(tasks)} ({', '.join(t.id[:8] for t in tasks)})")
+
+    results = [run_task(model, t, run_dir) for t in tasks]
+    results_dicts = [asdict(r) for r in results]
+    (run_dir / "summary.json").write_text(json.dumps(results_dicts, indent=2))
+    _print_summary(model, results_dicts)
+
+
+@bench.command("list")
+def bench_list() -> None:
+    """List run directories under outputs/runs/."""
+    root = _outputs_root()
+    if not root.exists():
+        click.echo(f"(no runs — {root} does not exist)")
+        return
+    runs = sorted([p for p in root.iterdir() if p.is_dir()], key=lambda p: p.stat().st_mtime)
+    if not runs:
+        click.echo(f"(no runs in {root})")
+        return
+    click.echo(f"{'run_id':<40} {'tasks':>6} {'summary':<8}")
+    for run in runs:
+        summary = run / "summary.json"
+        n_tasks = "?"
+        has_summary = "yes" if summary.exists() else "no"
+        if summary.exists():
+            try:
+                data = json.loads(summary.read_text())
+                n_tasks = str(len(data))
+            except Exception:
+                n_tasks = "err"
+        click.echo(f"{run.name:<40} {n_tasks:>6} {has_summary:<8}")
+
+
+@bench.command("show")
+@click.argument("run_id")
+def bench_show(run_id: str) -> None:
+    """Show summary.json for a run."""
+    run_dir = _outputs_root() / run_id
+    summary = run_dir / "summary.json"
+    if not summary.exists():
+        raise click.ClickException(f"No summary.json at {summary}")
+    results = json.loads(summary.read_text())
+    model = results[0]["model"] if results else "?"
+    _print_summary(model, results)
+
+
+# ---------- tasks ----------
+
+
+@cli.group("tasks")
+def tasks_group():
+    """Inspect task definitions."""
+
+
+@tasks_group.command("list")
+@click.option("--category", default=None, help="Filter by category directory name.")
+def tasks_list(category: str | None) -> None:
+    """List task IDs grouped by category."""
+    paths = sorted(TASKS_ROOT.glob("*/*.json"))
+    by_cat: dict[str, list[str]] = {}
+    for p in paths:
+        by_cat.setdefault(p.parent.name, []).append(p.stem)
+    for cat in sorted(by_cat):
+        if category and cat != category:
+            continue
+        click.echo(f"\n{cat} ({len(by_cat[cat])})")
+        for tid in by_cat[cat]:
+            click.echo(f"  {tid}")
+
+
+@tasks_group.command("show")
+@click.argument("task_id")
+def tasks_show(task_id: str) -> None:
+    """Show the JSON definition of a single task."""
+    matches = list(TASKS_ROOT.glob(f"*/{task_id}.json"))
+    if not matches:
+        raise click.ClickException(f"Task {task_id} not found under {TASKS_ROOT}")
+    click.echo(matches[0].read_text())
+
+
+# ---------- sandbox ----------
+
+
+@cli.group()
+def sandbox():
+    """Manage Use Computer sandboxes."""
+
+
+@sandbox.command("open")
+@click.option(
+    "--sandbox-id",
+    default=None,
+    help="Connect to an existing sandbox instead of creating a new one.",
+)
+def sandbox_open(sandbox_id: str | None) -> None:
+    """Open (or reconnect to) a macOS sandbox and launch noVNC in the browser."""
+    if not os.getenv("USE_COMPUTER_API_KEY"):
+        raise click.UsageError("USE_COMPUTER_API_KEY not set")
+
+    from use_computer import Computer, SandboxType
+
+    base_url = os.environ.get("USE_COMPUTER_BASE_URL", "https://api.dev.use.computer")
+    api_key = os.environ["USE_COMPUTER_API_KEY"]
+    client = Computer(api_key=api_key, base_url=base_url)
+
+    if sandbox_id:
+        click.echo(f"Connecting to existing sandbox {sandbox_id}...")
+        mac = client.get(sandbox_id)
+        created = False
+    else:
+        click.echo("Booting macOS sandbox...")
+        mac = client.create(type=SandboxType.MACOS)
+        created = True
+
+    url = f"{base_url}/vnc?sandbox={mac.sandbox_id}&token={api_key}"
+    click.echo(f"sandbox_id : {mac.sandbox_id}")
+    click.echo(f"ssh_url    : {getattr(mac, 'ssh_url', '')}")
+    click.echo(f"vnc_url    : {url}")
+
+    mac.start_keepalive()
+    webbrowser.open(url)
+
+    try:
+        suffix = " and shut down the sandbox..." if created else "..."
+        input(f"\nVNC opened in browser. Press Enter to exit{suffix}")
+    finally:
+        mac.stop_keepalive()
+        if created:
+            click.echo("Closing sandbox...")
+            mac.close()
+        client.close()
+
+
+if __name__ == "__main__":
+    cli()

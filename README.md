@@ -25,9 +25,11 @@ uv sync
 # Run a smoke benchmark
 export USE_COMPUTER_API_KEY=...
 export ANTHROPIC_API_KEY=...
-just bench claude-haiku-4-5 smoke
+uv run mw bench run --model claude-haiku-4-5 --tasks smoke
+uv run mw bench list             # see all runs
+uv run mw tasks list             # browse task catalog
 
-# View results
+# View results in the dashboard
 just dashboard
 ```
 
