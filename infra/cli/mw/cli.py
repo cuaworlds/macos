@@ -80,12 +80,68 @@ def bench():
     default=None,
     help="Override the run directory name (default: <model>-<ts>).",
 )
-def bench_run(model: str, tasks_spec: str, run_id: str | None) -> None:
+@click.option(
+    "--backend",
+    type=click.Choice(["use-computer", "kvm"]),
+    default="use-computer",
+    show_default=True,
+    help="Sandbox backend: managed Use Computer SDK, or a local QEMU/KVM fleet.",
+)
+@click.option(
+    "--kvm-fleet-size",
+    type=int,
+    default=lambda: int(os.getenv("MACOSWORLD_KVM_FLEET_SIZE", "4")),
+    help="KVM only: number of guests to pre-warm and run rollouts across.",
+)
+@click.option(
+    "--kvm-host",
+    default=lambda: os.getenv("MACOSWORLD_KVM_HOST", "localhost"),
+    help="KVM only: host where Docker runs and ports are reachable.",
+)
+@click.option(
+    "--kvm-base-volume",
+    default=None,
+    help="KVM only: path to the gold base volume to clone (defaults to env/spike path).",
+)
+@click.option("--kvm-ram-gb", type=int, default=4, show_default=True, help="KVM only: RAM per guest.")
+@click.option("--kvm-vcpu", type=int, default=4, show_default=True, help="KVM only: vCPUs per guest.")
+@click.option(
+    "--kvm-ssh-key",
+    default=None,
+    help="KVM only: path (on this machine) to the id_kvm private key for guest SSH.",
+)
+@click.option(
+    "--kvm-ssh-login",
+    default=None,
+    help="KVM only: host login used to run docker over SSH when --kvm-host is remote.",
+)
+@click.option(
+    "--kvm-disk-mode",
+    type=click.Choice(["overlay", "copy"]),
+    default="overlay",
+    show_default=True,
+    help="KVM only: 'overlay' (default) = thin qcow2 overlay over a shared read-only "
+    "base (near-instant clones, ~MBs/guest, FS-agnostic); 'copy' = full per-guest copy (fallback).",
+)
+def bench_run(
+    model: str,
+    tasks_spec: str,
+    run_id: str | None,
+    backend: str,
+    kvm_fleet_size: int,
+    kvm_host: str,
+    kvm_base_volume: str | None,
+    kvm_ram_gb: int,
+    kvm_vcpu: int,
+    kvm_ssh_key: str | None,
+    kvm_ssh_login: str | None,
+    kvm_disk_mode: str,
+) -> None:
     """Run benchmark tasks against a model."""
-    if not os.getenv("USE_COMPUTER_API_KEY"):
-        raise click.UsageError("USE_COMPUTER_API_KEY not set")
     if not os.getenv("ANTHROPIC_API_KEY"):
         raise click.UsageError("ANTHROPIC_API_KEY not set")
+    if backend == "use-computer" and not os.getenv("USE_COMPUTER_API_KEY"):
+        raise click.UsageError("USE_COMPUTER_API_KEY not set (required for --backend use-computer)")
 
     if tasks_spec == "smoke":
         tasks = load_tasks(smoke=True)
@@ -94,16 +150,57 @@ def bench_run(model: str, tasks_spec: str, run_id: str | None) -> None:
     else:
         tasks = load_tasks(ids=[t.strip() for t in tasks_spec.split(",") if t.strip()])
 
-    run_id = run_id or f"{model}-{int(time.time())}"
+    run_id = run_id or f"{model}-{backend}-{int(time.time())}"
     run_dir = _outputs_root() / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
     click.echo(f"Run dir: {run_dir}")
+    click.echo(f"Backend: {backend}")
     click.echo(f"Tasks  : {len(tasks)} ({', '.join(t.id[:8] for t in tasks)})")
 
-    results = [run_task(model, t, run_dir) for t in tasks]
+    if backend == "kvm":
+        results = _run_kvm(
+            model, tasks, run_dir,
+            fleet_size=kvm_fleet_size, host=kvm_host,
+            base_volume=kvm_base_volume, ram_gb=kvm_ram_gb, vcpu=kvm_vcpu,
+            ssh_key=kvm_ssh_key, ssh_login=kvm_ssh_login, disk_mode=kvm_disk_mode,
+        )
+    else:
+        # Managed SDK: sequential, one fresh sandbox per task (unchanged behaviour).
+        results = [run_task(model, t, run_dir) for t in tasks]
+
     results_dicts = [asdict(r) for r in results]
     (run_dir / "summary.json").write_text(json.dumps(results_dicts, indent=2))
     _print_summary(model, results_dicts)
+
+
+def _run_kvm(model, tasks, run_dir, *, fleet_size, host, base_volume, ram_gb, vcpu,
+             ssh_key=None, ssh_login=None, disk_mode="overlay"):
+    """Boot a KVM fleet, run all tasks concurrently across it, tear down."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from benchmark.env.kvm import KvmConfig, KvmFleet
+
+    cfg_kwargs = dict(fleet_size=fleet_size, host=host, ram_gb=ram_gb, vcpu=vcpu,
+                      disk_mode=disk_mode)
+    if base_volume:
+        cfg_kwargs["base_volume"] = base_volume
+    if ssh_key:
+        cfg_kwargs["ssh_key"] = ssh_key
+    if ssh_login:
+        cfg_kwargs["ssh_login"] = ssh_login
+    fleet = KvmFleet(KvmConfig(**cfg_kwargs)).boot()
+    parallelism = max(1, fleet.size)
+    click.echo(f"Fleet  : {fleet.size} guest(s), running {parallelism}-way concurrent")
+    try:
+        with ThreadPoolExecutor(max_workers=parallelism) as pool:
+            return list(
+                pool.map(
+                    lambda t: run_task(model, t, run_dir, backend="kvm", fleet=fleet),
+                    tasks,
+                )
+            )
+    finally:
+        fleet.teardown()
 
 
 @bench.command("list")
@@ -192,8 +289,24 @@ def sandbox():
     default=None,
     help="Connect to an existing sandbox instead of creating a new one.",
 )
-def sandbox_open(sandbox_id: str | None) -> None:
+@click.option(
+    "--backend",
+    type=click.Choice(["use-computer", "kvm"]),
+    default="use-computer",
+    show_default=True,
+    help="Sandbox backend to open.",
+)
+@click.option(
+    "--kvm-host",
+    default=lambda: os.getenv("MACOSWORLD_KVM_HOST", "localhost"),
+    help="KVM only: host where Docker runs and ports are reachable.",
+)
+def sandbox_open(sandbox_id: str | None, backend: str, kvm_host: str) -> None:
     """Open (or reconnect to) a macOS sandbox and launch noVNC in the browser."""
+    if backend == "kvm":
+        _sandbox_open_kvm(kvm_host)
+        return
+
     if not os.getenv("USE_COMPUTER_API_KEY"):
         raise click.UsageError("USE_COMPUTER_API_KEY not set")
 
@@ -229,6 +342,30 @@ def sandbox_open(sandbox_id: str | None) -> None:
             click.echo("Closing sandbox...")
             mac.close()
         client.close()
+
+
+def _sandbox_open_kvm(host: str) -> None:
+    """Boot a single KVM guest, print connection info, open dockur's web VNC."""
+    from benchmark.env.kvm import KvmConfig, KvmFleet
+
+    click.echo("Booting one KVM macOS guest...")
+    fleet = KvmFleet(KvmConfig(fleet_size=1, host=host)).boot()
+    try:
+        slot = fleet.acquire()
+        web_url = f"http://{host}:{slot.web_port}"
+        ssh_cmd = (
+            f"ssh -i {slot.cfg.ssh_key} -p {slot.ssh_port} "
+            f"-o StrictHostKeyChecking=no {slot.cfg.ssh_user}@{host}"
+        )
+        click.echo(f"container : {slot.container_name}")
+        click.echo(f"ssh       : {ssh_cmd}")
+        click.echo(f"vnc (web) : {web_url}")
+        click.echo(f"vnc (raw) : {host}:{slot.vnc_port}")
+        webbrowser.open(web_url)
+        input("\nWeb VNC opened in browser. Press Enter to tear down the guest...")
+    finally:
+        click.echo("Tearing down KVM guest...")
+        fleet.teardown()
 
 
 if __name__ == "__main__":

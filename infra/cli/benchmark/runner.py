@@ -6,10 +6,15 @@ import traceback
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from typing import TYPE_CHECKING
+
 from benchmark.agent import ClaudeAgent
 from benchmark.config import MAX_STEPS, MODEL_CONFIG
-from benchmark.env import MacOSWorldEnv
+from benchmark.env import Env, make_env
 from benchmark.task import Task
+
+if TYPE_CHECKING:
+    from benchmark.env.kvm import KvmFleet
 
 
 @dataclass
@@ -34,7 +39,14 @@ def _cost_usd(model_id: str, in_tok: int, out_tok: int) -> float:
     return round((in_tok / 1_000_000) * cfg.input_per_mtok + (out_tok / 1_000_000) * cfg.output_per_mtok, 6)
 
 
-def run_task(model_id: str, task: Task, run_dir: Path) -> TaskResult:
+def run_task(
+    model_id: str,
+    task: Task,
+    run_dir: Path,
+    *,
+    backend: str = "use-computer",
+    fleet: "KvmFleet | None" = None,
+) -> TaskResult:
     task_dir = run_dir / task.id
     (task_dir / "context").mkdir(parents=True, exist_ok=True)
 
@@ -42,7 +54,8 @@ def run_task(model_id: str, task: Task, run_dir: Path) -> TaskResult:
     print(f"    instruction: {task.instruction[:100]}")
 
     t0 = time.time()
-    env: MacOSWorldEnv | None = None
+    env: Env | None = None
+    slot = None
     status = "error"
     error_str = ""
     score = 0
@@ -51,7 +64,13 @@ def run_task(model_id: str, task: Task, run_dir: Path) -> TaskResult:
     sandbox_id = ""
 
     try:
-        env = MacOSWorldEnv()
+        if backend == "kvm":
+            if fleet is None:
+                raise ValueError("kvm backend requires a fleet")
+            slot = fleet.acquire()
+            env = make_env("kvm", slot=slot)
+        else:
+            env = make_env(backend)
         sandbox_id = env.sandbox_id
         print(f"    sandbox: {sandbox_id} ({env._real_w}x{env._real_h} -> 1024x768, scale={env.scale_x:.2f}x{env.scale_y:.2f})")
 
@@ -89,6 +108,13 @@ def run_task(model_id: str, task: Task, run_dir: Path) -> TaskResult:
                 env.close()
             except Exception as e:
                 print(f"    [warn] env.close failed: {e}")
+        elif slot is not None:
+            # make_env failed after we acquired a slot — return it so the pool
+            # doesn't leak a guest. (When env exists, env.close() releases it.)
+            try:
+                slot.release()
+            except Exception as e:
+                print(f"    [warn] slot.release failed: {e}")
 
     in_tok = agent.total_input_tokens if agent else 0
     out_tok = agent.total_output_tokens if agent else 0

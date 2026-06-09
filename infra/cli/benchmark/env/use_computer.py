@@ -2,21 +2,13 @@ from __future__ import annotations
 
 import io
 import time
-from dataclasses import dataclass
 
 from PIL import Image
 from use_computer import Computer, SandboxType
 
 from benchmark.config import BASE_URL, DISPLAY_HEIGHT, DISPLAY_WIDTH
+from benchmark.env.base import Screenshot
 from benchmark.task import Task
-
-
-@dataclass
-class Screenshot:
-    image: Image.Image
-    png: bytes
-    scale_x: float
-    scale_y: float
 
 
 class MacOSWorldEnv:

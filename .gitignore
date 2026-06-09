@@ -6,6 +6,11 @@ dist/
 wheels/
 *.egg-info
 
+# ...but DO track infra/kvm/dist/ (our base-bundle distribution metadata lives there;
+# the actual *.tar.zst payload is hosted in S3, not committed).
+!infra/kvm/dist/
+!infra/kvm/dist/**
+
 # Virtual environments
 .venv
 

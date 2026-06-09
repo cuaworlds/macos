@@ -11,6 +11,41 @@ function resolveOutputsRoot(): string {
   return path.resolve(__dirname, '..', '..', '..', 'outputs', 'runs')
 }
 
+function resolveTasksRoot(): string {
+  // repo-root/infra/cli/tasks — task definitions hold the instruction + grading.
+  return path.resolve(__dirname, '..', '..', 'cli', 'tasks')
+}
+
+/** Read a task definition by id, searching across category dirs. */
+async function readTaskDef(tasksRoot: string, taskId: string) {
+  let categories: import('fs').Dirent[]
+  try {
+    categories = await fs.readdir(tasksRoot, { withFileTypes: true })
+  } catch {
+    return null
+  }
+  for (const cat of categories) {
+    if (!cat.isDirectory()) continue
+    const file = path.join(tasksRoot, cat.name, `${taskId}.json`)
+    let raw: string
+    try {
+      raw = await fs.readFile(file, 'utf8')
+    } catch {
+      continue
+    }
+    const d = JSON.parse(raw)
+    const pre = d.pre_command
+    return {
+      task_id: taskId,
+      category: cat.name,
+      instruction: d?.task?.en ?? d?.task ?? '',
+      pre_command: typeof pre === 'string' ? pre : pre?.en ?? '',
+      grading_command: Array.isArray(d.grading_command) ? d.grading_command : [],
+    }
+  }
+  return null
+}
+
 async function listRuns(root: string) {
   let entries: import('fs').Dirent[]
   try {
@@ -96,7 +131,23 @@ export function runsApi(): Plugin {
     name: 'runs-api',
     configureServer(server) {
       const outputsRoot = resolveOutputsRoot()
+      const tasksRoot = resolveTasksRoot()
       server.config.logger.info(`[runs-api] serving runs from ${outputsRoot}`)
+
+      server.middlewares.use('/api/taskdef', async (req, res, next) => {
+        if (req.method !== 'GET') return next()
+        try {
+          const url = new URL(req.url || '/', 'http://x')
+          const taskId = url.pathname.replace(/^\/+|\/+$/g, '')
+          if (!taskId) return sendJson(res, 400, { error: 'taskId required' })
+          const def = await readTaskDef(tasksRoot, taskId)
+          if (def === null) return sendJson(res, 404, { error: 'task not found' })
+          return sendJson(res, 200, def)
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err)
+          return sendJson(res, 500, { error: message })
+        }
+      })
 
       server.middlewares.use('/api/runs', async (req, res, next) => {
         if (req.method !== 'GET') return next()

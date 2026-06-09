@@ -1,0 +1,2 @@
+# macOS base-volume bundle is large + binary → store via git LFS, not in the packfile.
+infra/kvm/dist/*.tar.zst filter=lfs diff=lfs merge=lfs -text

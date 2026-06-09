@@ -52,6 +52,57 @@ export type RunInfo = {
   has_summary: boolean
 }
 
+export type TaskDef = {
+  task_id: string
+  category: string
+  instruction: string
+  pre_command: string
+  grading_command: [string, number][]
+}
+
+export type GradeLogEntry = {
+  cmd: string
+  value: number
+  stdout?: string
+  hit?: boolean
+  error?: string
+}
+
+// The model always operates on a virtual 1024x768 display; saved screenshots are
+// captured at exactly that size, so action coordinates map onto the rendered image
+// by a simple fraction (no per-backend resolution conversion needed).
+export const DISPLAY_W = 1024
+export const DISPLAY_H = 768
+
+export type Marker = {
+  kind: 'click' | 'start' | 'end' | 'move'
+  x: number
+  y: number
+  label: string
+}
+
+/** Extract pointer markers (in 1024x768 space) from an action's input. */
+export function actionMarkers(action: string, input: Record<string, unknown>): Marker[] {
+  const asXY = (v: unknown): [number, number] | null =>
+    Array.isArray(v) && v.length === 2 && typeof v[0] === 'number' && typeof v[1] === 'number'
+      ? [v[0], v[1]]
+      : null
+
+  const markers: Marker[] = []
+  if (action === 'left_click_drag') {
+    const start = asXY(input.start_coordinate)
+    const end = asXY(input.coordinate)
+    if (start) markers.push({ kind: 'start', x: start[0], y: start[1], label: 'drag from' })
+    if (end) markers.push({ kind: 'end', x: end[0], y: end[1], label: 'drag to' })
+    return markers
+  }
+  const coord = asXY(input.coordinate)
+  if (!coord) return markers
+  const kind: Marker['kind'] = action === 'mouse_move' ? 'move' : 'click'
+  markers.push({ kind, x: coord[0], y: coord[1], label: action })
+  return markers
+}
+
 export function parseJsonl<T>(text: string): T[] {
   const out: T[] = []
   for (const line of text.split('\n')) {

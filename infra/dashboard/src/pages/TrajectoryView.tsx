@@ -1,12 +1,17 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import Scrubber from '../components/Scrubber'
 import {
+  actionMarkers,
+  DISPLAY_H,
+  DISPLAY_W,
   flattenFrames,
   parseJsonl,
   screenshotUrl,
   statusPill,
+  type GradeLogEntry,
   type StepRecord,
+  type TaskDef,
   type TaskResult,
 } from '../lib/trajectory'
 
@@ -16,9 +21,14 @@ export default function TrajectoryView() {
   const { runId = '', taskId = '' } = useParams()
   const [steps, setSteps] = useState<StepRecord[] | null>(null)
   const [result, setResult] = useState<TaskResult | null>(null)
+  const [taskDef, setTaskDef] = useState<TaskDef | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [frameIdx, setFrameIdx] = useState(0)
   const [playing, setPlaying] = useState(false)
+  // Pin the side column to the screenshot's rendered height so long model-thinking
+  // text scrolls inside it instead of stretching the whole row taller than the image.
+  const stageRef = useRef<HTMLDivElement>(null)
+  const [sideMax, setSideMax] = useState<number | undefined>(undefined)
 
   useEffect(() => {
     if (!runId || !taskId) return
@@ -35,10 +45,39 @@ export default function TrajectoryView() {
       .then((r) => (r.ok ? r.json() : null))
       .then(setResult)
       .catch(() => {})
+
+    fetch(`/api/taskdef/${encodeURIComponent(taskId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setTaskDef)
+      .catch(() => {})
   }, [runId, taskId])
 
   const frames = useMemo(() => (steps ? flattenFrames(steps) : []), [steps])
   const cur = frames[frameIdx]
+  const markers = useMemo(
+    () => (cur ? actionMarkers(cur.action, cur.input) : []),
+    [cur],
+  )
+  const dragLine =
+    markers.length === 2 && markers[0].kind === 'start' && markers[1].kind === 'end'
+      ? { a: markers[0], b: markers[1] }
+      : null
+
+  const gradeLog = useMemo<GradeLogEntry[]>(
+    () => (Array.isArray(result?.grade_log) ? (result!.grade_log as GradeLogEntry[]) : []),
+    [result],
+  )
+
+  // Track the stage (screenshot) height and mirror it onto the side column.
+  useEffect(() => {
+    const el = stageRef.current
+    if (!el) return
+    const update = () => setSideMax(el.offsetHeight)
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    update()
+    return () => ro.disconnect()
+  }, [steps])
 
   useEffect(() => {
     if (!cur || !runId || !taskId) return
@@ -51,6 +90,8 @@ export default function TrajectoryView() {
   }, [frameIdx, frames, cur, runId, taskId])
 
   const pill = statusPill(result?.status)
+  const scoreCls =
+    result?.score && result.score > 0 ? 'pill green' : 'pill red'
 
   return (
     <div className="page">
@@ -83,6 +124,13 @@ export default function TrajectoryView() {
         )}
       </div>
 
+      {taskDef?.instruction && (
+        <div className="card task-card">
+          <div className="label">Task{taskDef.category ? ` · ${taskDef.category}` : ''}</div>
+          <div className="task-text">{taskDef.instruction}</div>
+        </div>
+      )}
+
       {err && <div className="empty">Failed to load trajectory: {err}</div>}
       {!err && steps === null && <div className="empty muted">Loading…</div>}
       {!err && steps && frames.length === 0 && (
@@ -92,17 +140,55 @@ export default function TrajectoryView() {
       {!err && cur && (
         <>
           <div className="viewer">
-            <div className="stage">
+            <div className="stage" ref={stageRef}>
               {cur.screenshot ? (
-                <img
-                  src={screenshotUrl(runId, taskId, cur.screenshot)}
-                  alt={`step ${cur.step}`}
-                />
+                <div className="shot-wrap">
+                  <img
+                    src={screenshotUrl(runId, taskId, cur.screenshot)}
+                    alt={`step ${cur.step}`}
+                  />
+                  <div className="shot-overlay">
+                    {dragLine && (
+                      <svg
+                        className="drag-svg"
+                        viewBox="0 0 100 100"
+                        preserveAspectRatio="none"
+                      >
+                        <line
+                          x1={(dragLine.a.x / DISPLAY_W) * 100}
+                          y1={(dragLine.a.y / DISPLAY_H) * 100}
+                          x2={(dragLine.b.x / DISPLAY_W) * 100}
+                          y2={(dragLine.b.y / DISPLAY_H) * 100}
+                          stroke="var(--accent)"
+                          strokeWidth="0.4"
+                          strokeDasharray="1 1"
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      </svg>
+                    )}
+                    {markers.map((m, i) => (
+                      <div
+                        key={i}
+                        className={`marker ${m.kind}`}
+                        style={{
+                          left: `${(m.x / DISPLAY_W) * 100}%`,
+                          top: `${(m.y / DISPLAY_H) * 100}%`,
+                        }}
+                        title={`${m.label} (${m.x}, ${m.y})`}
+                      >
+                        <span className="ring" />
+                        <span className="marker-label">
+                          {m.label} · {m.x},{m.y}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ) : (
                 <div className="muted">(no screenshot)</div>
               )}
             </div>
-            <div className="side">
+            <div className="side" style={sideMax ? { maxHeight: sideMax } : undefined}>
               <div className="card">
                 <div className="label">Step {cur.step} · Action</div>
                 <div style={{ marginBottom: 6 }}>
@@ -120,7 +206,8 @@ export default function TrajectoryView() {
                   </>
                 )}
               </div>
-              <div className="card">
+
+              <div className="card thinking-card">
                 <div className="label">Model thinking</div>
                 <pre>{cur.text?.trim() || '(none captured)'}</pre>
               </div>
@@ -134,6 +221,53 @@ export default function TrajectoryView() {
             onChange={(v) => setFrameIdx(v)}
             onTogglePlay={() => setPlaying((p) => !p)}
           />
+
+          <div className="card verifier-card">
+            <div className="label">Verifier</div>
+            <div className="verifier-score">
+              <span className={scoreCls}>
+                score {result?.score ?? 0}
+                {result?.max_score ? ` / ${result.max_score}` : ''}
+              </span>
+            </div>
+            {gradeLog.length > 0 ? (
+              gradeLog.map((g, i) => {
+                const cls = g.error
+                  ? 'pill amber'
+                  : g.hit
+                    ? 'pill green'
+                    : 'pill red'
+                const verdict = g.error ? 'error' : g.hit ? 'pass' : 'no match'
+                return (
+                  <div className="check" key={i}>
+                    <div className="check-head">
+                      <span className={cls}>{verdict}</span>
+                    </div>
+                    <pre className="check-cmd">{g.cmd}</pre>
+                    <div className="label" style={{ marginTop: 6 }}>
+                      output
+                    </div>
+                    <pre>{g.error ?? g.stdout ?? '(empty)'}</pre>
+                  </div>
+                )
+              })
+            ) : taskDef && taskDef.grading_command.length > 0 ? (
+              <>
+                <div className="muted" style={{ marginBottom: 6 }}>
+                  not evaluated — grading commands:
+                </div>
+                {taskDef.grading_command
+                  .filter(([, v]) => v === 100)
+                  .map(([cmd], i) => (
+                    <pre className="check-cmd" key={i}>
+                      {cmd}
+                    </pre>
+                  ))}
+              </>
+            ) : (
+              <div className="muted">(no grading info)</div>
+            )}
+          </div>
         </>
       )}
     </div>
