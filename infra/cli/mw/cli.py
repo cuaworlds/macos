@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
+import subprocess
 import sys
 import time
 import webbrowser
@@ -11,8 +13,10 @@ from pathlib import Path
 import click
 
 from benchmark.config import MODEL_CONFIG
+from benchmark.log import setup_logging
 from benchmark.runner import run_task
 from benchmark.task import TASKS_ROOT, load_tasks
+from mw import remote as rmt
 
 
 def _outputs_root() -> Path:
@@ -51,6 +55,9 @@ def _print_summary(model: str, results: list[dict]) -> None:
 @click.group()
 def cli():
     """macos-world benchmark CLI."""
+    # Stream timestamped, per-task-tagged progress in real time (and line-buffer
+    # stdout) so long/concurrent runs are debuggable and never *look* deadlocked.
+    setup_logging()
 
 
 # ---------- bench ----------
@@ -138,8 +145,11 @@ def bench_run(
     kvm_disk_mode: str,
 ) -> None:
     """Run benchmark tasks against a model."""
-    if not os.getenv("ANTHROPIC_API_KEY"):
-        raise click.UsageError("ANTHROPIC_API_KEY not set")
+    provider = MODEL_CONFIG[model].provider
+    if provider == "anthropic" and not os.getenv("ANTHROPIC_API_KEY"):
+        raise click.UsageError("ANTHROPIC_API_KEY not set (required for claude-* models)")
+    if provider == "yutori" and not os.getenv("YUTORI_API_KEY"):
+        raise click.UsageError("YUTORI_API_KEY not set (required for n1.5-* models)")
     if backend == "use-computer" and not os.getenv("USE_COMPUTER_API_KEY"):
         raise click.UsageError("USE_COMPUTER_API_KEY not set (required for --backend use-computer)")
 
@@ -366,6 +376,119 @@ def _sandbox_open_kvm(host: str) -> None:
     finally:
         click.echo("Tearing down KVM guest...")
         fleet.teardown()
+
+
+# ---------- remote ----------
+
+
+@cli.group()
+def remote():
+    """Run benchmarks on a remote host (rsync + tmux); detach/attach friendly."""
+
+
+@remote.command("run")
+@click.option("--server", default=None, help="Server name from remote.toml (default: its default_server).")
+@click.option("--name", default="run", help="Session name suffix -> mw-<name>.")
+@click.option("--detach/--wait", "detach", default=True, help="Detach (default) or wait for completion then pull.")
+@click.argument("bench_args", nargs=-1, type=click.UNPROCESSED)
+def remote_run(server: str | None, name: str, detach: bool, bench_args: tuple[str, ...]) -> None:
+    """Sync the working tree to the host and run `mw bench run` there in tmux.
+
+    Everything after `--` is passed through to `mw bench run`. The backend is
+    forced to kvm/localhost (loopback data plane). Example:
+
+        mw remote run --name smoke -- --model n1.5-latest --tasks smoke --kvm-fleet-size 5
+    """
+    repo_root = rmt.find_repo_root()
+    cfg = rmt.load_config(repo_root, server)
+    session = rmt.normalize_session(name)
+    if rmt.session_is_active(cfg["host"], session):
+        raise click.UsageError(
+            f"Session {session} is already running on {cfg['host']}. "
+            f"`mw remote attach {name}` or `mw remote stop {name}` first."
+        )
+    rmt.rsync_to_remote(cfg["host"], cfg["remote_dir"], repo_root, cfg["rsync_excludes"], session)
+    # `--package` is required: `mw` is the workspace *member* (macosworld-usecomputer)
+    # script; a fresh-venv `uv run mw` at the workspace root won't install it.
+    inner = "uv run --package macosworld-usecomputer mw bench run --backend kvm --kvm-host localhost " + " ".join(
+        shlex.quote(a) for a in bench_args
+    )
+    rmt.start_session(cfg, session, inner)
+    click.echo(f"==> Started {session} on {cfg['host']}")
+    click.echo(f"    attach: uv run mw remote attach {name}")
+    click.echo(f"    logs:   uv run mw remote logs {name}")
+    click.echo(f"    pull:   uv run mw remote pull {name}")
+
+    if not detach:
+        click.echo(f"==> Waiting (poll {cfg['poll_interval']}s); Ctrl-C just detaches, run keeps going.")
+        try:
+            while rmt.session_is_active(cfg["host"], session):
+                time.sleep(cfg["poll_interval"])
+        except KeyboardInterrupt:
+            click.echo("\n==> Detached; session still running on the host.")
+            return
+        rmt.kill_session(cfg["host"], session)
+        _remote_pull(cfg, session)
+
+
+@remote.command("attach")
+@click.option("--server", default=None)
+@click.argument("name", default="run")
+def remote_attach(server: str | None, name: str) -> None:
+    """Attach to the live tmux session (Ctrl-b d to detach; the run keeps going)."""
+    cfg = rmt.load_config(rmt.find_repo_root(), server)
+    session = rmt.normalize_session(name)
+    # -t allocates a PTY so the local terminal is wired to tmux attach.
+    os.execvp("ssh", ["ssh", "-t", cfg["host"], f"tmux attach -t {session}"])
+
+
+@remote.command("logs")
+@click.option("--server", default=None)
+@click.option("-n", "--lines", default=40, help="Lines of history before following.")
+@click.argument("name", default="run")
+def remote_logs(server: str | None, name: str) -> None:
+    """Follow the unified session log (agent + harness) without taking the pane."""
+    cfg = rmt.load_config(rmt.find_repo_root(), server)
+    session = rmt.normalize_session(name)
+    log = rmt.session_log(cfg["remote_dir"], session)
+    os.execvp("ssh", ["ssh", cfg["host"], f"tail -n {lines} -f {shlex.quote(log)}"])
+
+
+@remote.command("list")
+@click.option("--server", default=None)
+def remote_list(server: str | None) -> None:
+    """List live mw-* sessions on the host."""
+    cfg = rmt.load_config(rmt.find_repo_root(), server)
+    res = subprocess.run(
+        ["ssh", cfg["host"], "tmux ls 2>/dev/null | grep '^mw-' || true"],
+        capture_output=True, text=True,
+    )
+    out = res.stdout.strip()
+    click.echo(out if out else "(no mw-* sessions)")
+
+
+@remote.command("pull")
+@click.option("--server", default=None)
+@click.argument("name", default="run")
+def remote_pull(server: str | None, name: str) -> None:
+    """Pull a run's outputs back to the laptop so the dashboard can show it."""
+    cfg = rmt.load_config(rmt.find_repo_root(), server)
+    _remote_pull(cfg, rmt.normalize_session(name))
+
+
+@remote.command("stop")
+@click.option("--server", default=None)
+@click.argument("name", default="run")
+def remote_stop(server: str | None, name: str) -> None:
+    """Kill the tmux session (the bench's own teardown releases the guests)."""
+    cfg = rmt.load_config(rmt.find_repo_root(), server)
+    session = rmt.normalize_session(name)
+    rmt.kill_session(cfg["host"], session)
+    click.echo(f"==> Killed {session}")
+
+
+def _remote_pull(cfg: dict, session: str) -> None:
+    rmt.pull_results(cfg["host"], cfg["remote_dir"], session, _outputs_root())
 
 
 if __name__ == "__main__":

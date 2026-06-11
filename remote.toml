@@ -1,0 +1,38 @@
+# Remote execution config for `mw remote` (rsync + tmux on a pre-provisioned host).
+# The host needs rsync, uv, and tmux on PATH. Secrets are forwarded from the local
+# environment (see forward_env) — do NOT put API keys here.
+
+[settings]
+default_server = "kvmbox"
+poll_interval = 30  # seconds between liveness checks when `mw remote run --wait`
+# Keep the rsync payload tiny: the harness is small; never ship outputs, venvs,
+# node_modules, or the read-only dataset submodules.
+rsync_excludes = [
+  ".git",
+  ".venv",
+  "node_modules",
+  "__pycache__",
+  ".pytest_cache",
+  "outputs",
+  "macosworld-aws",
+  "macosworld-vmware",
+  "infra/dashboard/node_modules",
+  "infra/dashboard/dist",
+]
+# Local env vars forwarded (shlex-quoted) into the remote tmux command, so runs use
+# the invoking user's keys without baking secrets onto the host.
+forward_env = ["YUTORI_API_KEY", "ANTHROPIC_API_KEY"]
+
+[servers.kvmbox]
+host = "jjmachan@100.118.89.35"
+# Umbrella for all macos-world host stuff: rsync snapshots land in runs/<session>/,
+# alongside the KVM base/, _base_qcow2/, and ssh/ (see env below).
+remote_dir = "~/workspace/vibrantlabs/macos-world"
+shell_prefix = ""  # uv is on the login PATH; no `nix develop` wrapper needed
+env_file = ""      # secrets come via forward_env, not a remote .env
+
+# Point KvmConfig at the consolidated base volume + guest key under the umbrella
+# (KvmConfig reads these env vars; _base_qcow2 auto-derives as base's sibling).
+[servers.kvmbox.env]
+MACOSWORLD_KVM_BASE_VOLUME = "/home/jjmachan/workspace/vibrantlabs/macos-world/base"
+MACOSWORLD_KVM_SSH_KEY = "/home/jjmachan/workspace/vibrantlabs/macos-world/ssh/id_kvm"

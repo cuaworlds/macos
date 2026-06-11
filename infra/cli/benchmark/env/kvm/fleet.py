@@ -15,6 +15,9 @@ from benchmark.env.kvm.config import KvmConfig
 from benchmark.env.kvm.host import Host
 from benchmark.env.kvm.rfb import RfbClient
 from benchmark.env.kvm.ssh import GuestSsh
+from benchmark.log import get_logger
+
+log = get_logger()
 
 # Best-effort in-guest reset between rollouts. Non-fatal; the next task's
 # pre_command is the real state-setup. Quit common apps + clear the dirs tasks write.
@@ -84,7 +87,7 @@ class KvmFleet:
     def boot(self) -> "KvmFleet":
         cfg = self.cfg
         n = cfg.fleet_size
-        print(f"[fleet] booting {n} guest(s) on {cfg.host} from {cfg.base_volume}")
+        log.info(f"[fleet] booting {n} guest(s) on {cfg.host} from {cfg.base_volume}")
 
         # 1. Build slots and clone the base volume for each.
         self.slots = [self._make_slot(i) for i in range(1, n + 1)]
@@ -94,14 +97,14 @@ class KvmFleet:
         if cfg.disk_mode == "overlay":
             # Convert the raw base to a shared read-only qcow2 once (cached), then give
             # each guest a thin overlay — near-instant, ~MBs per guest, FS-agnostic.
-            print("[fleet] ensuring shared qcow2 base (overlay mode)...")
+            log.info("[fleet] ensuring shared qcow2 base (overlay mode)...")
             self.host.ensure_qcow2_base()
             for slot in self.slots:
-                print(f"[fleet] overlay clone -> {slot.volume_path}")
+                log.info(f"[fleet] overlay clone -> {slot.volume_path}")
                 self.host.make_overlay_clone(slot.volume_path)
         else:
             for slot in self.slots:
-                print(f"[fleet] copy clone -> {slot.volume_path}")
+                log.info(f"[fleet] copy clone -> {slot.volume_path}")
                 self.host.clone_volume(str(cfg.base_volume), slot.volume_path)
 
         # 2. Launch all containers, then wait for SSH on each — both in parallel.
@@ -116,12 +119,12 @@ class KvmFleet:
 
         with ThreadPoolExecutor(max_workers=n) as pool:
             list(pool.map(launch, self.slots))
-        print(f"[fleet] {n} container(s) launched; waiting for SSH...")
+        log.info(f"[fleet] {n} container(s) launched; waiting for SSH...")
 
         def wait(slot: FleetSlot) -> tuple[FleetSlot, bool]:
             ready = slot.ssh().wait_until_ready(timeout_s=cfg.boot_timeout_s)
             status = "up" if ready else "TIMEOUT"
-            print(f"[fleet] {slot.container_name} SSH {status}")
+            log.info(f"[fleet] {slot.container_name} SSH {status}")
             return slot, ready
 
         with ThreadPoolExecutor(max_workers=n) as pool:
@@ -135,7 +138,7 @@ class KvmFleet:
             self._available.put(slot)
         self.slots = ready_slots
         self._booted = True
-        print(f"[fleet] ready: {len(ready_slots)}/{n} guest(s) usable")
+        log.info(f"[fleet] ready: {len(ready_slots)}/{n} guest(s) usable")
         return self
 
     def acquire(self, timeout: float | None = None) -> FleetSlot:
@@ -145,7 +148,7 @@ class KvmFleet:
         try:
             slot.ssh().exec_detached(_RESET_CMD, timeout=30)
         except Exception as e:  # noqa: BLE001 — reset is best-effort
-            print(f"[fleet] {slot.container_name} reset warning: {e}")
+            log.info(f"[fleet] {slot.container_name} reset warning: {e}")
         finally:
             self._available.put(slot)
 
@@ -155,4 +158,4 @@ class KvmFleet:
             if remove_clones:
                 self.host.remove_volume(slot.volume_path)
         self._booted = False
-        print(f"[fleet] torn down {len(self.slots)} guest(s)")
+        log.info(f"[fleet] torn down {len(self.slots)} guest(s)")

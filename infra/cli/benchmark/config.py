@@ -13,6 +13,12 @@ TASK_STEP_TIMEOUT_S = 120
 ONLY_N_MOST_RECENT_IMAGES = 3
 MAX_TOKENS = 4096
 
+# Hard ceiling on a single model predict call. The vendor SDKs default to ~600s,
+# which lets one slow/hung request stall a worker (and, under concurrency, make the
+# whole run look frozen). Bound it so a wedged predict fails fast → the task errors
+# → the fleet keeps going. Override via env for slow networks.
+MODEL_CALL_TIMEOUT_S = float(os.getenv("MACOSWORLD_MODEL_TIMEOUT_S", "120"))
+
 
 @dataclass
 class ModelCfg:
@@ -22,6 +28,7 @@ class ModelCfg:
     thinking_budget_tokens: int | None
     input_per_mtok: float
     output_per_mtok: float
+    provider: str = "anthropic"  # "anthropic" | "yutori"
 
 
 # Per Anthropic docs (May 2026):
@@ -51,6 +58,26 @@ MODEL_CONFIG: dict[str, ModelCfg] = {
         thinking_budget_tokens=None,
         input_per_mtok=1.0,
         output_per_mtok=5.0,
+    ),
+    # Yutori Navigator n1.5 — browser-trained CUA, OpenAI-compatible API.
+    # Pricing per docs.yutori.com/pricing (2026-06).
+    "n1.5-latest": ModelCfg(
+        model_id="n1.5-latest",
+        tool_version="",
+        beta_header="",
+        thinking_budget_tokens=None,
+        input_per_mtok=1.5,
+        output_per_mtok=5.0,
+        provider="yutori",
+    ),
+    "n1.5-20260428": ModelCfg(
+        model_id="n1.5-20260428",
+        tool_version="",
+        beta_header="",
+        thinking_budget_tokens=None,
+        input_per_mtok=1.5,
+        output_per_mtok=5.0,
+        provider="yutori",
     ),
 }
 

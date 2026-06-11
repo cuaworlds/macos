@@ -23,9 +23,11 @@ cd macos-world
 uv sync
 
 # Run a smoke benchmark
-export USE_COMPUTER_API_KEY=...
-export ANTHROPIC_API_KEY=...
+export USE_COMPUTER_API_KEY=...     # required for --backend use-computer
+export ANTHROPIC_API_KEY=...        # required for claude-* models
+export YUTORI_API_KEY=...           # required for n1.5-* models
 uv run mw bench run --model claude-haiku-4-5 --tasks smoke
+uv run mw bench run --model n1.5-latest --tasks smoke   # cross-provider
 uv run mw bench list             # see all runs
 uv run mw tasks list             # browse task catalog
 

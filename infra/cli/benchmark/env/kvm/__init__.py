@@ -10,6 +10,7 @@ agent loop is backend-agnostic:
 from __future__ import annotations
 
 import io
+import socket
 import time
 
 from PIL import Image
@@ -18,7 +19,15 @@ from benchmark.config import DISPLAY_HEIGHT, DISPLAY_WIDTH
 from benchmark.env.base import Screenshot
 from benchmark.env.kvm.config import KvmConfig
 from benchmark.env.kvm.fleet import FleetSlot, KvmFleet
+from benchmark.env.kvm.rfb import RfbError
+from benchmark.log import get_logger
 from benchmark.task import Task
+
+log = get_logger()
+
+# Errors that mean "this RFB socket is wedged/broken" — recoverable by reconnecting
+# a fresh socket to the same guest's VNC port.
+_RFB_BROKEN = (socket.timeout, ConnectionError, OSError, RfbError)
 
 __all__ = ["KvmMacOSEnv", "KvmFleet", "KvmConfig", "FleetSlot"]
 
@@ -44,12 +53,32 @@ class KvmMacOSEnv:
     # --- screen ---
 
     def screenshot(self) -> Screenshot:
-        img = self.rfb.screenshot().convert("RGB")
+        img = self._grab_with_reconnect().convert("RGB")
         if img.size != (DISPLAY_WIDTH, DISPLAY_HEIGHT):
             img = img.resize((DISPLAY_WIDTH, DISPLAY_HEIGHT), Image.LANCZOS)
         buf = io.BytesIO()
         img.save(buf, format="PNG")
         return Screenshot(image=img, png=buf.getvalue(), scale_x=self.scale_x, scale_y=self.scale_y)
+
+    def _grab_with_reconnect(self) -> Image.Image:
+        """Grab one framebuffer; if the socket is wedged, reconnect once and retry.
+
+        A timed-out/broken RFB socket would otherwise poison the env — every later
+        screenshot reuses the same dead socket. Reconnecting a fresh socket to the
+        guest's VNC port lets a transiently-stalled guest recover. If the retry also
+        fails we raise, so run_task records the task as errored and releases the slot
+        (rather than the whole run hanging).
+        """
+        try:
+            return self.rfb.screenshot()
+        except _RFB_BROKEN as e:
+            log.warning(f"[{self.sandbox_id}] RFB screenshot failed ({type(e).__name__}: {e}); reconnecting")
+            try:
+                self.rfb.close()
+            except Exception:
+                pass
+            self.rfb = self.slot.connect_rfb()
+            return self.rfb.screenshot()
 
     # --- action dispatch (Claude computer tool → RFB) ---
 
@@ -161,7 +190,10 @@ class KvmMacOSEnv:
             # the agent still runs and grading reflects the real end state.
             res = self._ssh.exec_detached(task.pre_command, timeout=60)
             if res.rc != 0:
-                print(f"    [warn] pre_command rc={res.rc} (continuing): {res.stderr.strip()[:120]}")
+                log.warning(
+                    f"[{self.sandbox_id}] pre_command rc={res.rc} (continuing): "
+                    f"{res.stderr.strip()[:120]}"
+                )
 
     def grade(self, task: Task) -> tuple[int, list[dict]]:
         """Run grading_command list; first command worth 100 returning 'true' wins."""
@@ -183,8 +215,12 @@ class KvmMacOSEnv:
     # --- cleanup ---
 
     def close(self) -> None:
+        # Releasing the slot is the only thing that must happen here; a failure to
+        # tear down an already-broken RFB socket must not propagate (or it would mask
+        # the release in callers' eyes and could leak the guest from the pool).
         try:
             self.rfb.close()
+        except Exception as e:  # noqa: BLE001 — cleanup, best-effort
+            log.warning(f"[{self.sandbox_id}] rfb.close failed (ignored): {e}")
         finally:
-            # Hand the warm VM back to the pool instead of destroying it.
             self.slot.release()

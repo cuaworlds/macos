@@ -17,6 +17,7 @@ from anthropic.types.beta import (
 
 from benchmark.config import (
     MAX_TOKENS,
+    MODEL_CALL_TIMEOUT_S,
     MODEL_CONFIG,
     ONLY_N_MOST_RECENT_IMAGES,
     SYSTEM_PROMPT,
@@ -46,7 +47,7 @@ class ClaudeAgent:
         self.save_dir = Path(save_dir)
         (self.save_dir / "context").mkdir(parents=True, exist_ok=True)
 
-        self.client = anthropic.Anthropic()
+        self.client = anthropic.Anthropic(timeout=MODEL_CALL_TIMEOUT_S)
         self.tools = tools_for(model_id)
         self.messages: list[dict] = []
         self.total_input_tokens = 0

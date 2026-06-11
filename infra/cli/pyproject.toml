@@ -7,12 +7,16 @@ requires-python = ">=3.12"
 dependencies = [
     "anthropic>=0.103.1",
     "click>=8.0.0",
+    "openai>=1.0.0",
     "pillow>=12.2.0",
     "use-computer>=0.0.18",
 ]
 
 [project.scripts]
 mw = "mw.cli:cli"
+
+[dependency-groups]
+dev = ["pytest>=8.0.0"]
 
 [build-system]
 requires = ["hatchling"]
