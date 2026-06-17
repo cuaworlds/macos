@@ -14,7 +14,7 @@ import click
 
 from benchmark.config import MODEL_CONFIG
 from benchmark.log import setup_logging
-from benchmark.runner import run_task
+from benchmark.runner import aggregate_trials, build_work_items, run_task
 from benchmark.task import TASKS_ROOT, load_tasks
 from mw import remote as rmt
 
@@ -50,6 +50,31 @@ def _print_summary(model: str, results: list[dict]) -> None:
         f"{'TOTAL':<20} {'':<10} {total_score:>5} {'':<5} "
         f"{total_in:>8} {total_out:>8} {total_cost:>7.4f}"
     )
+
+
+def _print_trials_summary(agg: dict) -> None:
+    """Per-task pass@k aggregate block printed after the flat per-trial summary.
+
+    Flags tasks landing in the 1/5 or 2/5 'target band' (the interesting, neither
+    trivially-solved nor never-solved tasks) for rejection-sampling triage.
+    """
+    n = agg["n_trials"]
+    click.echo("\n" + "=" * 80)
+    click.echo(f"PASS@{n} — {agg['model']} — threshold {agg['pass_threshold']:g}")
+    click.echo("=" * 80)
+    click.echo(
+        f"{'base_task':<24} {'passes':>8} {'pass_rate':>9} {'mean_score':>10} {'mean_steps':>10}"
+    )
+    for base_id, t in agg["tasks"].items():
+        trials = t["trials"]
+        n_t = t["n_trials"]
+        mean_score = sum(x["score"] for x in trials) / n_t if n_t else 0.0
+        mean_steps = sum(x["n_steps"] for x in trials) / n_t if n_t else 0.0
+        flag = "  <- TARGET BAND" if t["passes"] in (1, 2) else ""
+        click.echo(
+            f"{base_id[:24]:<24} {f'{t['passes']}/{n_t}':>8} {t['pass_rate']:>9.2f} "
+            f"{mean_score:>10.1f} {mean_steps:>10.1f}{flag}"
+        )
 
 
 @click.group()
@@ -95,6 +120,20 @@ def bench():
     help="Sandbox backend: managed Use Computer SDK, or a local QEMU/KVM fleet.",
 )
 @click.option(
+    "--trials",
+    type=click.IntRange(min=1),
+    default=1,
+    show_default=True,
+    help="Rollouts per task (pass@k). >1 writes trials.json and a per-task aggregate.",
+)
+@click.option(
+    "--pass-threshold",
+    type=float,
+    default=0.99,
+    show_default=True,
+    help="Fraction of max_score a trial must reach to count as a pass.",
+)
+@click.option(
     "--kvm-fleet-size",
     type=int,
     default=lambda: int(os.getenv("MACOSWORLD_KVM_FLEET_SIZE", "4")),
@@ -109,6 +148,13 @@ def bench():
     "--kvm-base-volume",
     default=None,
     help="KVM only: path to the gold base volume to clone (defaults to env/spike path).",
+)
+@click.option(
+    "--env",
+    "env_pkg",
+    default=None,
+    help="KVM only: path to an env.toml (or its dir) describing an os-base ← +apps "
+    "layer chain (RFC 0002). Resolves the base + top layer instead of --kvm-base-volume.",
 )
 @click.option("--kvm-ram-gb", type=int, default=4, show_default=True, help="KVM only: RAM per guest.")
 @click.option("--kvm-vcpu", type=int, default=4, show_default=True, help="KVM only: vCPUs per guest.")
@@ -135,9 +181,12 @@ def bench_run(
     tasks_spec: str,
     run_id: str | None,
     backend: str,
+    trials: int,
+    pass_threshold: float,
     kvm_fleet_size: int,
     kvm_host: str,
     kvm_base_volume: str | None,
+    env_pkg: str | None,
     kvm_ram_gb: int,
     kvm_vcpu: int,
     kvm_ssh_key: str | None,
@@ -163,35 +212,81 @@ def bench_run(
     run_id = run_id or f"{model}-{backend}-{int(time.time())}"
     run_dir = _outputs_root() / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
+    # (task, trial) work items, trial-major. trial=None when trials==1 so the
+    # output layout is byte-identical to single-trial runs.
+    work_items = build_work_items(tasks, trials)
     click.echo(f"Run dir: {run_dir}")
     click.echo(f"Backend: {backend}")
     click.echo(f"Tasks  : {len(tasks)} ({', '.join(t.id[:8] for t in tasks)})")
+    if trials > 1:
+        click.echo(f"Trials : {trials} per task ({len(work_items)} rollouts), pass>={pass_threshold:g}")
 
     if backend == "kvm":
+        resolved_env = None
+        if env_pkg:
+            if kvm_base_volume:
+                raise click.UsageError("--env and --kvm-base-volume are mutually exclusive")
+            from benchmark.env.pkg import EnvPackageError, resolve_env_package
+
+            # On a remote box the layer dirs are box-side (the SSH host commands check
+            # them); locally we validate they exist. Mirror KvmConfig.is_remote.
+            local = kvm_host in ("localhost", "127.0.0.1", "")
+            try:
+                resolved_env = resolve_env_package(env_pkg, validate_paths=local)
+            except EnvPackageError as e:
+                raise click.UsageError(f"env package error: {e}") from e
+            click.echo(
+                f"Env    : {resolved_env.name} "
+                f"(base={resolved_env.base_volume_dir}"
+                + (f", +apps={resolved_env.apps_layer_dir}" if resolved_env.apps_layer_dir else ", bare base")
+                + ")"
+            )
         results = _run_kvm(
-            model, tasks, run_dir,
+            model, work_items, run_dir,
             fleet_size=kvm_fleet_size, host=kvm_host,
             base_volume=kvm_base_volume, ram_gb=kvm_ram_gb, vcpu=kvm_vcpu,
             ssh_key=kvm_ssh_key, ssh_login=kvm_ssh_login, disk_mode=kvm_disk_mode,
+            resolved_env=resolved_env,
         )
     else:
-        # Managed SDK: sequential, one fresh sandbox per task (unchanged behaviour).
-        results = [run_task(model, t, run_dir) for t in tasks]
+        # Managed SDK: sequential, one fresh sandbox per (task, trial).
+        results = [run_task(model, t, run_dir, trial=k) for t, k in work_items]
 
     results_dicts = [asdict(r) for r in results]
+    if trials > 1:
+        # summary.json stays a FLAT list (one row per trial) for the dashboard;
+        # fill the per-row `passed` flag (threshold lives in the CLI layer) and
+        # emit the grouped pass@k report to trials.json.
+        agg = aggregate_trials(results, trials, pass_threshold)
+        passed_by_dir = {
+            t["dir"]: t["passed"] for task in agg["tasks"].values() for t in task["trials"]
+        }
+        for r in results_dicts:
+            r["passed"] = passed_by_dir.get(r["task_id"])
+        (run_dir / "trials.json").write_text(json.dumps(agg, indent=2))
     (run_dir / "summary.json").write_text(json.dumps(results_dicts, indent=2))
     _print_summary(model, results_dicts)
+    if trials > 1:
+        _print_trials_summary(agg)
 
 
-def _run_kvm(model, tasks, run_dir, *, fleet_size, host, base_volume, ram_gb, vcpu,
-             ssh_key=None, ssh_login=None, disk_mode="overlay"):
-    """Boot a KVM fleet, run all tasks concurrently across it, tear down."""
+def _run_kvm(model, work_items, run_dir, *, fleet_size, host, base_volume, ram_gb, vcpu,
+             ssh_key=None, ssh_login=None, disk_mode="overlay", resolved_env=None):
+    """Boot a KVM fleet, run all (task, trial) items concurrently across it, tear down."""
     from concurrent.futures import ThreadPoolExecutor
 
     from benchmark.env.kvm import KvmConfig, KvmFleet
 
     cfg_kwargs = dict(fleet_size=fleet_size, host=host, ram_gb=ram_gb, vcpu=vcpu,
                       disk_mode=disk_mode)
+    if resolved_env is not None:
+        # An env package supplies the os-base (as the base_volume source) and, optionally,
+        # the top +apps layer the instance overlay backs onto. Takes the place of
+        # --kvm-base-volume; the two are mutually exclusive (enforced in bench_run).
+        cfg_kwargs["base_volume"] = str(resolved_env.base_volume_dir)
+        cfg_kwargs["macos_version"] = resolved_env.macos_version
+        if resolved_env.apps_layer_dir is not None:
+            cfg_kwargs["apps_layer_dir"] = str(resolved_env.apps_layer_dir)
     if base_volume:
         cfg_kwargs["base_volume"] = base_volume
     if ssh_key:
@@ -205,8 +300,10 @@ def _run_kvm(model, tasks, run_dir, *, fleet_size, host, base_volume, ram_gb, vc
         with ThreadPoolExecutor(max_workers=parallelism) as pool:
             return list(
                 pool.map(
-                    lambda t: run_task(model, t, run_dir, backend="kvm", fleet=fleet),
-                    tasks,
+                    lambda item: run_task(
+                        model, item[0], run_dir, backend="kvm", fleet=fleet, trial=item[1]
+                    ),
+                    work_items,
                 )
             )
     finally:
@@ -446,7 +543,7 @@ def remote_attach(server: str | None, name: str) -> None:
 @click.option("--server", default=None)
 @click.option("-n", "--lines", default=40, help="Lines of history before following.")
 @click.argument("name", default="run")
-def remote_logs(server: str | None, name: str) -> None:
+def remote_logs(server: str | None, lines: int, name: str) -> None:
     """Follow the unified session log (agent + harness) without taking the pane."""
     cfg = rmt.load_config(rmt.find_repo_root(), server)
     session = rmt.normalize_session(name)

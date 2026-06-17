@@ -1,0 +1,13 @@
+{
+  "id": "71fdb51d-9d99-49d9-b7ab-47d63cf02cda",
+  "snapshot": {"en": "snapshot_used_en"},
+  "force_snapshot_recovery": true,
+  "task": {"en": "In the Documents folder there is a file named `wifi-card.txt`. Open it in TextEdit and read it: it gives a guest Wi-Fi network name and password. Then open the Stickies app and create a new sticky note (File menu, New Note) containing exactly these two lines, on separate lines:\n\nNetwork: <the network name from the file>\nPassword: <the password from the file>\n\nReplace the angle-bracket parts with the actual values from the file. Leave the note open so it is saved."},
+  "pre_command": "for A in '/System/Applications/Utilities/Terminal.app' '/Applications/iTerm.app' '/System/Applications/Utilities/Script Editor.app' '/Applications/Utilities/Script Editor.app' '/System/Applications/Automator.app' '/Applications/Automator.app' '/System/Applications/Shortcuts.app'; do [ -e \"$A/Contents/MacOS\" ] && (sudo /bin/chmod 000 \"$A/Contents/MacOS\" 2>/dev/null || /bin/chmod 000 \"$A/Contents/MacOS\" 2>/dev/null); done; mkdir -p \"$HOME/Documents\"; printf 'Guest Wi-Fi card\\n\\nNetwork name: Larkspur-Guest\\nPassword: Tulip-Meadow-77\\n\\nShare with visitors only.\\n' > \"$HOME/Documents/wifi-card.txt\"; killall Stickies 2>/dev/null; sleep 2; SDIR=\"$HOME/Library/Containers/com.apple.Stickies/Data/Library/Stickies\"; for d in \"$SDIR\"/*.rtfd; do [ -e \"$d/TXT.rtf\" ] || continue; if grep -ql 'Larkspur-Guest' \"$d/TXT.rtf\" 2>/dev/null || grep -ql 'Tulip-Meadow-77' \"$d/TXT.rtf\" 2>/dev/null; then rm -rf \"$d\"; fi; done",
+  "before_action_delay_seconds": 10,
+  "before_grading_delay_seconds": 30,
+  "grading_command": [
+    ["killall Stickies 2>/dev/null; sleep 2; SDIR=\"$HOME/Library/Containers/com.apple.Stickies/Data/Library/Stickies\"; found=0; for d in \"$SDIR\"/*.rtfd; do [ -e \"$d/TXT.rtf\" ] || continue; txt=$(textutil -convert txt -stdout \"$d/TXT.rtf\" 2>/dev/null); case \"$txt\" in *\"Network: Larkspur-Guest\"*) found=$((found+1));; esac; done; [ \"$found\" -ge 1 ] && echo True || echo False", 40],
+    ["killall Stickies 2>/dev/null; sleep 2; SDIR=\"$HOME/Library/Containers/com.apple.Stickies/Data/Library/Stickies\"; found=0; for d in \"$SDIR\"/*.rtfd; do [ -e \"$d/TXT.rtf\" ] || continue; txt=$(textutil -convert txt -stdout \"$d/TXT.rtf\" 2>/dev/null); case \"$txt\" in *\"Password: Tulip-Meadow-77\"*) found=$((found+1));; esac; done; [ \"$found\" -ge 1 ] && echo True || echo False", 60]
+  ]
+}

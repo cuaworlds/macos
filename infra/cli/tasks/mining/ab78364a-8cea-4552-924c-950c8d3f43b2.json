@@ -1,0 +1,14 @@
+{
+  "id": "ab78364a-8cea-4552-924c-950c8d3f43b2",
+  "snapshot": {"en": "snapshot_used_en"},
+  "force_snapshot_recovery": true,
+  "task": {"en": "Find this Mac's system details in System Settings and record them in Notes. Create a new note titled exactly `System Card`. The body must contain exactly these THREE lines, with each placeholder replaced by the real current value read from System Settings:\n```\nModel Identifier: <model id, e.g. MacBookPro18,1>\nmacOS Version: <X.Y.Z>\nMemory: <NN GB>\n```\nGet `Model Identifier` from System Settings → General → About → click `More Info…` (or the system report). Get `macOS Version` from System Settings → General → About (the macOS version, written X.Y.Z). Get `Memory` from System Settings → General → About (written as `NN GB`). Do not add any other notes."},
+  "before_action_delay_seconds": 10,
+  "before_grading_delay_seconds": 30,
+  "pre_command": "for A in '/System/Applications/Utilities/Terminal.app' '/Applications/iTerm.app' '/System/Applications/Utilities/Script Editor.app' '/Applications/Utilities/Script Editor.app' '/System/Applications/Automator.app' '/Applications/Automator.app' '/System/Applications/Shortcuts.app'; do [ -e \"$A/Contents/MacOS\" ] && (sudo /bin/chmod 000 \"$A/Contents/MacOS\" 2>/dev/null || /bin/chmod 000 \"$A/Contents/MacOS\" 2>/dev/null); done; UDB=\"$HOME/Library/Application Support/com.apple.TCC/TCC.db\"; sqlite3 \"$UDB\" \"INSERT OR REPLACE INTO access (service,client,client_type,auth_value,auth_reason,auth_version,csreq,indirect_object_identifier_type,indirect_object_identifier,flags) VALUES ('kTCCServiceAppleEvents','/usr/libexec/sshd-keygen-wrapper',1,2,3,1,NULL,0,'com.apple.Notes',0);\" 2>/dev/null; (sudo killall tccd 2>/dev/null; killall tccd 2>/dev/null); sleep 2; osascript -e 'tell application \"Notes\" to delete every note' -e 'tell application \"Notes\" to delete every note in folder \"Recently Deleted\"' -e 'tell application \"Notes\" to quit' 2>/dev/null; sleep 1",
+  "grading_command": [
+    ["MID=$(sysctl -n hw.model 2>/dev/null); BODY=$(osascript -e 'tell application \"Notes\" to get body of note \"System Card\"' 2>/dev/null); [ -n \"$MID\" ] && echo \"$BODY\" | grep -qF \"Model Identifier: $MID\" && echo True || echo False", 34],
+    ["MV=$(sw_vers -productVersion 2>/dev/null); BODY=$(osascript -e 'tell application \"Notes\" to get body of note \"System Card\"' 2>/dev/null); [ -n \"$MV\" ] && echo \"$BODY\" | grep -qF \"macOS Version: $MV\" && echo True || echo False", 33],
+    ["GB=$(( $(sysctl -n hw.memsize 2>/dev/null) / 1073741824 )); BODY=$(osascript -e 'tell application \"Notes\" to get body of note \"System Card\"' 2>/dev/null); [ \"$GB\" -ge 1 ] 2>/dev/null && echo \"$BODY\" | grep -qF \"Memory: ${GB} GB\" && echo True || echo False", 33]
+  ]
+}

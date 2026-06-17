@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.index.v1+json",
+  "manifests": [
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "artifactType": "application/vnd.cua.chain.v1+json",
+      "digest": "sha256:2b77aeb0d7cdbf4093ec9ecec18d2dd4294141ef1c10e0fd759dd6c02a7d9f92", "size": 1157,
+      "platform": { "os": "darwin", "architecture": "amd64" },
+      "annotations": { "cua.target.os": "macos", "cua.target.runtime": "kvm-qcow2" }
+    },
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "artifactType": "application/vnd.cua.chain.v1+json",
+      "digest": "sha256:833fc0579e32563d1be010bcbc67739dba177ee3f21b132c303790c630a88a86", "size": 1156,
+      "platform": { "os": "darwin", "architecture": "arm64" },
+      "annotations": { "cua.target.os": "macos", "cua.target.runtime": "vz-clonefile" }
+    }
+  ]
+}

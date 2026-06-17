@@ -68,14 +68,159 @@ def _char_keysym(ch: str) -> int:
     return o  # best effort
 
 
+# --- RFB security type 2 (VNC Authentication, DES challenge-response) ---------
+#
+# Needed ONLY for the Apple Virtualization.framework native VNC server
+# (`_VZVNCServer`, exposed by `tart run --vnc-experimental`), which offers
+# *only* security type 2. QEMU's VNC offers type 1 (None) and never reaches
+# this code. The auth is a 16-byte DES challenge encrypted with the password as
+# the key, but with each key byte's bits reversed (the VNC quirk). Pure stdlib —
+# keeps rfb.py dependency-free. Validated against DES known-answer vectors and
+# against the live Apple server in W0b (SecurityResult: 0).
+
+# DES tables (FIPS 46-3). Compact; used only by _vnc_des_encrypt.
+_DES_IP = [
+    58, 50, 42, 34, 26, 18, 10, 2, 60, 52, 44, 36, 28, 20, 12, 4,
+    62, 54, 46, 38, 30, 22, 14, 6, 64, 56, 48, 40, 32, 24, 16, 8,
+    57, 49, 41, 33, 25, 17, 9, 1, 59, 51, 43, 35, 27, 19, 11, 3,
+    61, 53, 45, 37, 29, 21, 13, 5, 63, 55, 47, 39, 31, 23, 15, 7,
+]
+_DES_FP = [
+    40, 8, 48, 16, 56, 24, 64, 32, 39, 7, 47, 15, 55, 23, 63, 31,
+    38, 6, 46, 14, 54, 22, 62, 30, 37, 5, 45, 13, 53, 21, 61, 29,
+    36, 4, 44, 12, 52, 20, 60, 28, 35, 3, 43, 11, 51, 19, 59, 27,
+    34, 2, 42, 10, 50, 18, 58, 26, 33, 1, 41, 9, 49, 17, 57, 25,
+]
+_DES_E = [
+    32, 1, 2, 3, 4, 5, 4, 5, 6, 7, 8, 9, 8, 9, 10, 11, 12, 13, 12, 13, 14, 15,
+    16, 17, 16, 17, 18, 19, 20, 21, 20, 21, 22, 23, 24, 25, 24, 25, 26, 27, 28,
+    29, 28, 29, 30, 31, 32, 1,
+]
+_DES_P = [
+    16, 7, 20, 21, 29, 12, 28, 17, 1, 15, 23, 26, 5, 18, 31, 10,
+    2, 8, 24, 14, 32, 27, 3, 9, 19, 13, 30, 6, 22, 11, 4, 25,
+]
+_DES_PC1 = [
+    57, 49, 41, 33, 25, 17, 9, 1, 58, 50, 42, 34, 26, 18, 10, 2, 59, 51, 43, 35,
+    27, 19, 11, 3, 60, 52, 44, 36, 63, 55, 47, 39, 31, 23, 15, 7, 62, 54, 46, 38,
+    30, 22, 14, 6, 61, 53, 45, 37, 29, 21, 13, 5, 28, 20, 12, 4,
+]
+_DES_PC2 = [
+    14, 17, 11, 24, 1, 5, 3, 28, 15, 6, 21, 10, 23, 19, 12, 4, 26, 8, 16, 7, 27,
+    20, 13, 2, 41, 52, 31, 37, 47, 55, 30, 40, 51, 45, 33, 48, 44, 49, 39, 56,
+    34, 53, 46, 42, 50, 36, 29, 32,
+]
+_DES_SHIFTS = [1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1]
+_DES_SBOX = [
+    [14, 4, 13, 1, 2, 15, 11, 8, 3, 10, 6, 12, 5, 9, 0, 7, 0, 15, 7, 4, 14, 2,
+     13, 1, 10, 6, 12, 11, 9, 5, 3, 8, 4, 1, 14, 8, 13, 6, 2, 11, 15, 12, 9, 7,
+     3, 10, 5, 0, 15, 12, 8, 2, 4, 9, 1, 7, 5, 11, 3, 14, 10, 0, 6, 13],
+    [15, 1, 8, 14, 6, 11, 3, 4, 9, 7, 2, 13, 12, 0, 5, 10, 3, 13, 4, 7, 15, 2,
+     8, 14, 12, 0, 1, 10, 6, 9, 11, 5, 0, 14, 7, 11, 10, 4, 13, 1, 5, 8, 12, 6,
+     9, 3, 2, 15, 13, 8, 10, 1, 3, 15, 4, 2, 11, 6, 7, 12, 0, 5, 14, 9],
+    [10, 0, 9, 14, 6, 3, 15, 5, 1, 13, 12, 7, 11, 4, 2, 8, 13, 7, 0, 9, 3, 4, 6,
+     10, 2, 8, 5, 14, 12, 11, 15, 1, 13, 6, 4, 9, 8, 15, 3, 0, 11, 1, 2, 12, 5,
+     10, 14, 7, 1, 10, 13, 0, 6, 9, 8, 7, 4, 15, 14, 3, 11, 5, 2, 12],
+    [7, 13, 14, 3, 0, 6, 9, 10, 1, 2, 8, 5, 11, 12, 4, 15, 13, 8, 11, 5, 6, 15,
+     0, 3, 4, 7, 2, 12, 1, 10, 14, 9, 10, 6, 9, 0, 12, 11, 7, 13, 15, 1, 3, 14,
+     5, 2, 8, 4, 3, 15, 0, 6, 10, 1, 13, 8, 9, 4, 5, 11, 12, 7, 2, 14],
+    [2, 12, 4, 1, 7, 10, 11, 6, 8, 5, 3, 15, 13, 0, 14, 9, 14, 11, 2, 12, 4, 7,
+     13, 1, 5, 0, 15, 10, 3, 9, 8, 6, 4, 2, 1, 11, 10, 13, 7, 8, 15, 9, 12, 5,
+     6, 3, 0, 14, 11, 8, 12, 7, 1, 14, 2, 13, 6, 15, 0, 9, 10, 4, 5, 3],
+    [12, 1, 10, 15, 9, 2, 6, 8, 0, 13, 3, 4, 14, 7, 5, 11, 10, 15, 4, 2, 7, 12,
+     9, 5, 6, 1, 13, 14, 0, 11, 3, 8, 9, 14, 15, 5, 2, 8, 12, 3, 7, 0, 4, 10, 1,
+     13, 11, 6, 4, 3, 2, 12, 9, 5, 15, 10, 11, 14, 1, 7, 6, 0, 8, 13],
+    [4, 11, 2, 14, 15, 0, 8, 13, 3, 12, 9, 7, 5, 10, 6, 1, 13, 0, 11, 7, 4, 9, 1,
+     10, 14, 3, 5, 12, 2, 15, 8, 6, 1, 4, 11, 13, 12, 3, 7, 14, 10, 15, 6, 8, 0,
+     5, 9, 2, 6, 11, 13, 8, 1, 4, 10, 7, 9, 5, 0, 15, 14, 2, 3, 12],
+    [13, 2, 8, 4, 6, 15, 11, 1, 10, 9, 3, 14, 5, 0, 12, 7, 1, 15, 13, 8, 10, 3,
+     7, 4, 12, 5, 6, 11, 0, 14, 9, 2, 7, 11, 4, 1, 9, 12, 14, 2, 0, 6, 10, 13,
+     15, 3, 5, 8, 2, 1, 14, 7, 4, 10, 8, 13, 15, 12, 9, 0, 3, 5, 6, 11],
+]
+
+
+def _bits(data: bytes) -> list[int]:
+    out = []
+    for byte in data:
+        for i in range(7, -1, -1):
+            out.append((byte >> i) & 1)
+    return out
+
+
+def _frombits(bits: list[int]) -> bytes:
+    out = bytearray()
+    for i in range(0, len(bits), 8):
+        byte = 0
+        for b in bits[i:i + 8]:
+            byte = (byte << 1) | b
+        out.append(byte)
+    return bytes(out)
+
+
+def _permute(block: list[int], table: list[int]) -> list[int]:
+    return [block[i - 1] for i in table]
+
+
+def _des_subkeys(key: bytes) -> list[list[int]]:
+    key_bits = _bits(key)
+    cd = _permute(key_bits, _DES_PC1)
+    c, d = cd[:28], cd[28:]
+    subkeys = []
+    for shift in _DES_SHIFTS:
+        c = c[shift:] + c[:shift]
+        d = d[shift:] + d[:shift]
+        subkeys.append(_permute(c + d, _DES_PC2))
+    return subkeys
+
+
+def _des_encrypt_block(block8: bytes, key8: bytes) -> bytes:
+    subkeys = _des_subkeys(key8)
+    bits = _permute(_bits(block8), _DES_IP)
+    left, right = bits[:32], bits[32:]
+    for k in subkeys:
+        er = _permute(right, _DES_E)
+        x = [er[i] ^ k[i] for i in range(48)]
+        out = []
+        for j in range(8):
+            chunk = x[j * 6:j * 6 + 6]
+            row = (chunk[0] << 1) | chunk[5]
+            col = (chunk[1] << 3) | (chunk[2] << 2) | (chunk[3] << 1) | chunk[4]
+            val = _DES_SBOX[j][row * 16 + col]
+            out.extend([(val >> 3) & 1, (val >> 2) & 1, (val >> 1) & 1, val & 1])
+        f = _permute(out, _DES_P)
+        new_right = [left[i] ^ f[i] for i in range(32)]
+        left, right = right, new_right
+    return _frombits(_permute(right + left, _DES_FP))
+
+
+def _vnc_des_response(password: str, challenge: bytes) -> bytes:
+    """16-byte VNC-auth response: DES-ECB encrypt the 16-byte challenge with the
+    password (NUL-padded/truncated to 8 bytes, each byte bit-reversed) as key."""
+    pw = (password.encode("latin-1") + b"\x00" * 8)[:8]
+    key = bytes(int(f"{b:08b}"[::-1], 2) for b in pw)  # reverse bits in each byte
+    return _des_encrypt_block(challenge[:8], key) + _des_encrypt_block(challenge[8:16], key)
+
+
 class RfbError(RuntimeError):
     pass
 
 
 class RfbClient:
-    def __init__(self, host: str, port: int, *, timeout: float = 30.0):
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        *,
+        timeout: float = 30.0,
+        vnc_password: str | None = None,
+    ):
+        # vnc_password: when set, enables RFB security type 2 (VNC-DES) auth and
+        # advertises the DesktopSize pseudo-encoding the Apple VZ VNC server
+        # mandates. When None (the QEMU/KVM default), behaviour is byte-for-byte
+        # the original type-1 (None) + [Raw] path — KVM is unaffected.
         self.host = host
         self.port = port
+        self.vnc_password = vnc_password
         self.s = socket.create_connection((host, port), timeout=timeout)
         self.s.settimeout(timeout)
         self.w = 0
@@ -109,9 +254,15 @@ class RfbClient:
             reason = self._recv_exact(reason_len).decode("ascii", "replace")
             raise RfbError(f"server refused connection: {reason}")
         types = self._recv_exact(n)
-        if 1 not in types:
+        if self.vnc_password is not None and 2 in types and 1 not in types:
+            # Apple VZ native VNC: only security type 2 (VNC-DES) is offered.
+            self.s.sendall(bytes([2]))  # select VNC Authentication
+            challenge = self._recv_exact(16)
+            self.s.sendall(_vnc_des_response(self.vnc_password, challenge))
+        elif 1 in types:
+            self.s.sendall(bytes([1]))  # security type None (QEMU/KVM path)
+        else:
             raise RfbError(f"server requires VNC auth (security types={list(types)})")
-        self.s.sendall(bytes([1]))  # security type None
         result = struct.unpack(">I", self._recv_exact(4))[0]
         if result != 0:
             raise RfbError(f"security handshake failed: {result}")
@@ -139,7 +290,19 @@ class RfbClient:
             0,     # blue-shift
         )
         self.s.sendall(struct.pack(">Bxxx", 0) + pf)  # SetPixelFormat (msg 0)
-        self.s.sendall(struct.pack(">BxH", 2, 1) + struct.pack(">i", 0))  # SetEncodings([Raw])
+        if self.vnc_password is not None:
+            # Apple VZ native VNC tears down its own listener unless the client
+            # advertises DesktopSize (-223). With it present the server serves
+            # plain Raw (0). We deliberately do NOT advertise Cursor (-239): that
+            # invites data-bearing cursor-shape pseudo-rects (and the VZ server
+            # also emits other private pseudo-encodings) which would desync our
+            # Raw-only reader. [Raw, DesktopSize] is the exact set W0b validated.
+            encs = [0, -223]
+        else:
+            encs = [0]  # QEMU/KVM: Raw only — unchanged
+        self.s.sendall(
+            struct.pack(">BxH", 2, len(encs)) + b"".join(struct.pack(">i", e) for e in encs)
+        )  # SetEncodings
         self._pixel_format_set = True
 
     # --- screenshot ---
@@ -161,10 +324,20 @@ class RfbClient:
                 data = self._recv_exact(rw * rh * 4)
                 tile = Image.frombuffer("RGB", (rw, rh), data, "raw", "BGRX", 0, 1)
                 canvas.paste(tile, (rx, ry))
-            elif enc == -239 or enc == -223:  # Cursor / DesktopSize pseudo: no data we need
+            elif enc == -223:  # DesktopSize: framebuffer resized to rw x rh, no payload.
+                if (rw, rh) != (self.w, self.h):
+                    self.w, self.h = rw, rh
+                    canvas = canvas.resize((self.w, self.h))
+                continue
+            elif enc == -239:  # Cursor pseudo-rect: carries pixels + a 1-bpp bitmask we
+                # don't render, but MUST consume to stay byte-aligned. (Not advertised
+                # for VZ, but tolerate it if a server sends it unsolicited.)
+                self._recv_exact(rw * rh * 4 + ((rw + 7) // 8) * rh)
                 continue
             else:
-                raise RfbError(f"unsupported encoding {enc} (advertised Raw only)")
+                # Unknown pseudo/encoding: we can't know its payload length, so the
+                # stream is unrecoverable. Fail loud rather than desync silently.
+                raise RfbError(f"unsupported encoding {enc} (advertised [Raw, DesktopSize])")
         return canvas
 
     def _read_until_framebuffer_update(self) -> int:

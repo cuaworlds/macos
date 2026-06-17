@@ -1,0 +1,14 @@
+{
+  "id": "1b5eebaf-303a-4fdf-bd44-7712e4400449",
+  "snapshot": {"en": "snapshot_used_en"},
+  "force_snapshot_recovery": true,
+  "task": {"en": "Set up a project workspace and record it.\n\n1. In Finder, inside the Documents folder, create a new folder named exactly `Q4-Launch`. Inside `Q4-Launch`, create THREE subfolders named exactly `Design`, `Engineering`, and `Marketing`.\n2. In Notes, create a new note titled exactly `Q4-Launch Folders`. Its body must list the three subfolder names you created, one per line:\n```\nDesign\nEngineering\nMarketing\n```\nDo not create any other folders or notes."},
+  "before_action_delay_seconds": 10,
+  "before_grading_delay_seconds": 30,
+  "pre_command": "for A in '/System/Applications/Utilities/Terminal.app' '/Applications/iTerm.app' '/System/Applications/Utilities/Script Editor.app' '/Applications/Utilities/Script Editor.app' '/System/Applications/Automator.app' '/Applications/Automator.app' '/System/Applications/Shortcuts.app'; do [ -e \"$A/Contents/MacOS\" ] && (sudo /bin/chmod 000 \"$A/Contents/MacOS\" 2>/dev/null || /bin/chmod 000 \"$A/Contents/MacOS\" 2>/dev/null); done; rm -rf \"$HOME/Documents/Q4-Launch\" 2>/dev/null; UDB=\"$HOME/Library/Application Support/com.apple.TCC/TCC.db\"; sqlite3 \"$UDB\" \"INSERT OR REPLACE INTO access (service,client,client_type,auth_value,auth_reason,auth_version,csreq,indirect_object_identifier_type,indirect_object_identifier,flags) VALUES ('kTCCServiceAppleEvents','/usr/libexec/sshd-keygen-wrapper',1,2,3,1,NULL,0,'com.apple.Notes',0);\" 2>/dev/null; (sudo killall tccd 2>/dev/null; killall tccd 2>/dev/null); sleep 2; osascript -e 'tell application \"Notes\" to delete every note' -e 'tell application \"Notes\" to delete every note in folder \"Recently Deleted\"' -e 'tell application \"Notes\" to quit' 2>/dev/null; sleep 1",
+  "grading_command": [
+    ["B=\"$HOME/Documents/Q4-Launch\"; [ -d \"$B\" ] && echo True || echo False", 20],
+    ["B=\"$HOME/Documents/Q4-Launch\"; n=0; for S in Design Engineering Marketing; do [ -d \"$B/$S\" ] && n=$((n+1)); done; awk -v n=\"$n\" 'BEGIN{printf \"%.4f\\n\", n/3}'", 40],
+    ["BODY=$(osascript -e 'tell application \"Notes\" to get body of note \"Q4-Launch Folders\"' 2>/dev/null); n=0; for S in Design Engineering Marketing; do echo \"$BODY\" | grep -qF \"$S\" && n=$((n+1)); done; awk -v n=\"$n\" 'BEGIN{printf \"%.4f\\n\", n/3}'", 40]
+  ]
+}

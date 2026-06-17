@@ -3,8 +3,12 @@
   "snapshot": {"en": "snapshot_used_en"},
   "force_snapshot_recovery": true,
   "task": {"en": "Using Finder, create a folder structure on the Desktop: `~/Desktop/Reports/2026/`. Then inside the `2026` folder, create a plain-text file `summary.txt` containing exactly the single line `Q1 report TBD` (no trailing blank line)."},
-  "pre_command": "rm -rf /Users/ec2-user/Desktop/Reports; sleep 1",
+  "pre_command": "rm -rf \"$HOME/Desktop/Reports\"; sleep 1",
   "before_action_delay_seconds": 10,
   "before_grading_delay_seconds": 30,
-  "grading_command": [["[ -d /Users/ec2-user/Desktop/Reports/2026 ] && [ -f /Users/ec2-user/Desktop/Reports/2026/summary.txt ] && printf 'Q1 report TBD\\n' > /tmp/_expected_q1.txt && cmp -s /tmp/_expected_q1.txt /Users/ec2-user/Desktop/Reports/2026/summary.txt && echo True || echo False", 100]]
+  "grading_command": [
+    ["[ -d \"$HOME/Desktop/Reports/2026\" ] && echo True || echo False", 30],
+    ["[ -f \"$HOME/Desktop/Reports/2026/summary.txt\" ] && echo True || echo False", 30],
+    ["printf 'Q1 report TBD\\n' > /tmp/_expected_q1.txt && cmp -s /tmp/_expected_q1.txt \"$HOME/Desktop/Reports/2026/summary.txt\" && echo True || echo False", 40]
+  ]
 }

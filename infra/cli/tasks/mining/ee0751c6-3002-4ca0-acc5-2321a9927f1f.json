@@ -1,0 +1,14 @@
+{
+  "id": "ee0751c6-3002-4ca0-acc5-2321a9927f1f",
+  "snapshot": {"en": "snapshot_used_en"},
+  "force_snapshot_recovery": true,
+  "task": {"en": "On the Desktop there is an image file named `banner.png` (it is wider than it is tall, 800 by 400 pixels). Open it in the Preview app, rotate the image a quarter-turn (90 degrees, using Preview's Tools menu — either direction is fine), and then save the rotated image to the Desktop as a PNG file named `banner-rotated.png`. After rotating, the saved image must be taller than it is wide (400 wide by 800 tall)."},
+  "pre_command": "DESK=\"$HOME/Desktop\"; mkdir -p \"$DESK\"; rm -f \"$DESK/banner-rotated.png\"; SRC=\"\"; for C in '/System/Library/CoreServices/DefaultDesktop.heic' '/System/Library/Desktop Pictures/.thumbnails/Big Sur Coastline.madesktop' '/System/Library/CoreServices/Finder.app/Contents/Resources/Finder.icns' '/System/Applications/Preview.app/Contents/Resources/AppIcon.icns' '/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/GenericApplicationIcon.icns'; do [ -e \"$C\" ] && { SRC=\"$C\"; break; }; done; [ -n \"$SRC\" ] && sips -s format png -z 400 800 \"$SRC\" --out \"$DESK/banner.png\" >/dev/null 2>&1; W=$(sips -g pixelWidth \"$DESK/banner.png\" 2>/dev/null | awk '/pixelWidth/{print $2}'); [ \"$W\" = \"800\" ] || sips -s format png --resampleHeightWidth 400 800 \"$DESK/banner.png\" --out \"$DESK/banner.png\" >/dev/null 2>&1",
+  "before_action_delay_seconds": 10,
+  "before_grading_delay_seconds": 30,
+  "grading_command": [
+    ["OUT=\"$HOME/Desktop/banner-rotated.png\"; [ -f \"$OUT\" ] && echo True || echo False", 35],
+    ["OUT=\"$HOME/Desktop/banner-rotated.png\"; [ -f \"$OUT\" ] || { echo False; exit 0; }; F=$(sips -g format \"$OUT\" 2>/dev/null | awk '/format:/{print $2}'); [ \"$F\" = \"png\" ] && echo True || echo False", 25],
+    ["OUT=\"$HOME/Desktop/banner-rotated.png\"; [ -f \"$OUT\" ] || { echo False; exit 0; }; W=$(sips -g pixelWidth \"$OUT\" 2>/dev/null | awk '/pixelWidth/{print $2}'); H=$(sips -g pixelHeight \"$OUT\" 2>/dev/null | awk '/pixelHeight/{print $2}'); [ \"$W\" = \"400\" ] && [ \"$H\" = \"800\" ] && echo True || echo False", 40]
+  ]
+}

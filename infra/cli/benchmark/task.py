@@ -18,6 +18,11 @@ class Task:
     before_grading_delay: int
     grading_command: list[tuple[str, int]]
     raw: dict
+    # Directory the task JSON lives in — used to resolve a relative grading_script.
+    task_dir: Path | None = None
+    # Optional host-side verifier. Path is relative to the task's dir (then to
+    # TASKS_ROOT); absent on every legacy task so they're unaffected.
+    grading_script: str | None = None
 
     @classmethod
     def from_json(cls, path: Path) -> "Task":
@@ -34,7 +39,26 @@ class Task:
             before_grading_delay=int(data.get("before_grading_delay_seconds", 0)),
             grading_command=[(g[0], int(g[1])) for g in data.get("grading_command", [])],
             raw=data,
+            task_dir=path.parent,
+            grading_script=(data.get("grading_script") or None),
         )
+
+    def resolve_grading_script(self) -> Path | None:
+        """Absolute path to the grading_script, or None if unset.
+
+        Resolved relative to the task's own dir first, then TASKS_ROOT.
+        """
+        if not self.grading_script:
+            return None
+        candidates = []
+        if self.task_dir is not None:
+            candidates.append(self.task_dir / self.grading_script)
+        candidates.append(TASKS_ROOT / self.grading_script)
+        for cand in candidates:
+            if cand.exists():
+                return cand.resolve()
+        # Return the best-guess path even if missing so the runner can report it.
+        return candidates[0].resolve()
 
 
 def _index_all_tasks() -> dict[str, Path]:

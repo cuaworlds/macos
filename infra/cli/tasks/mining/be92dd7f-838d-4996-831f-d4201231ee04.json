@@ -1,0 +1,27 @@
+{
+  "id": "be92dd7f-838d-4996-831f-d4201231ee04",
+  "snapshot": {
+    "en": "snapshot_used_en"
+  },
+  "force_snapshot_recovery": true,
+  "task": {
+    "en": "Find this Mac's macOS version and processor (chip) from System Settings → General → About. Then open TextEdit, make a plain-text document (Format → Make Plain Text if it is rich text), and save it to the Documents folder as `machine.txt`. The file must contain exactly these TWO lines, each placeholder replaced by the real value you read in System Settings:\n```\nmacOS: <X.Y.Z>\nChip: <chip / processor name>\n```\nThe first line is `macOS: ` followed by the version (e.g. `14.5.0`). The second line is `Chip: ` followed by the processor name shown in About. Do not create any other files."
+  },
+  "before_action_delay_seconds": 10,
+  "before_grading_delay_seconds": 30,
+  "pre_command": "for A in '/System/Applications/Utilities/Terminal.app' '/Applications/iTerm.app' '/System/Applications/Utilities/Script Editor.app' '/Applications/Utilities/Script Editor.app' '/System/Applications/Automator.app' '/Applications/Automator.app' '/System/Applications/Shortcuts.app'; do [ -e \"$A/Contents/MacOS\" ] && (sudo /bin/chmod 000 \"$A/Contents/MacOS\" 2>/dev/null || /bin/chmod 000 \"$A/Contents/MacOS\" 2>/dev/null); done; mkdir -p \"$HOME/Documents\"; rm -f \"$HOME/Documents/machine.txt\" 2>/dev/null",
+  "grading_command": [
+    [
+      "F=\"$HOME/Documents/machine.txt\"; [ -f \"$F\" ] && echo True || echo False",
+      20
+    ],
+    [
+      "F=\"$HOME/Documents/machine.txt\"; MV=$(sw_vers -productVersion 2>/dev/null); [ -f \"$F\" ] && [ -n \"$MV\" ] && grep -qiF \"macOS: $MV\" \"$F\" && echo True || echo False",
+      40
+    ],
+    [
+      "F=\"$HOME/Documents/machine.txt\"; PN=$(system_profiler SPHardwareDataType 2>/dev/null | awk -F': ' '/Processor Name/{print $2; exit}'); [ -f \"$F\" ] && [ -n \"$PN\" ] && grep -i '^[[:space:]]*Chip:' \"$F\" | grep -qiF \"$PN\" && echo True || echo False",
+      40
+    ]
+  ]
+}

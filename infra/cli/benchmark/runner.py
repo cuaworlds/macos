@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
+import tempfile
 import time
 import traceback
 from dataclasses import asdict, dataclass
@@ -12,6 +14,7 @@ from benchmark.agent import ClaudeAgent
 from benchmark.agent_yutori import NavigatorAgent
 from benchmark.config import MAX_STEPS, MODEL_CONFIG
 from benchmark.env import Env, make_env
+from benchmark.grading import fold_script_result, normalize_score
 from benchmark.log import get_logger
 from benchmark.task import Task
 
@@ -78,8 +81,8 @@ class TaskResult:
     task_id: str
     category: str
     model: str
-    score: int
-    max_score: int
+    score: float  # int for legacy binary tasks; float for weighted checkpoints
+    max_score: float
     n_steps: int
     status: str  # "done" | "fail" | "max_steps" | "error"
     duration_s: float
@@ -88,11 +91,130 @@ class TaskResult:
     cost_usd: float
     sandbox_id: str
     error: str = ""
+    # Multi-trial (pass@k) fields. Additive with defaults so single-trial runs and
+    # the dashboard's flat summary.json rows are unchanged. base_task_id is always
+    # task.id; trial is the 0-based trial index; passed is filled by the CLI layer
+    # (which owns the pass threshold), left None here.
+    base_task_id: str = ""
+    trial: int = 0
+    passed: bool | None = None
 
 
 def _cost_usd(model_id: str, in_tok: int, out_tok: int) -> float:
     cfg = MODEL_CONFIG[model_id]
     return round((in_tok / 1_000_000) * cfg.input_per_mtok + (out_tok / 1_000_000) * cfg.output_per_mtok, 6)
+
+
+def build_work_items(tasks: list[Task], trials: int) -> list[tuple[Task, int | None]]:
+    """Cross product of tasks×trials as (task, trial) work items, TRIAL-MAJOR.
+
+    Order is trial 0 of every task, then trial 1 of every task, ... so a partial
+    run still covers every task once before doubling up. When ``trials == 1`` the
+    trial component is ``None`` so callers reproduce today's single-trial output
+    layout byte-for-byte; otherwise it's the 0-based trial index.
+    """
+    if trials <= 1:
+        return [(t, None) for t in tasks]
+    return [(t, k) for k in range(trials) for t in tasks]
+
+
+def aggregate_trials(results: list[TaskResult], n_trials: int, pass_threshold: float) -> dict:
+    """Aggregate per-trial TaskResults into a pass@k report grouped by base task.
+
+    A trial passes when ``max_score > 0`` and ``score / max_score >= pass_threshold``;
+    a max_score of 0 (e.g. an errored rollout that never graded) can never pass.
+    Trials are grouped by ``base_task_id`` and ordered by trial index.
+    """
+    by_task: dict[str, list[TaskResult]] = {}
+    for r in results:
+        by_task.setdefault(r.base_task_id, []).append(r)
+
+    tasks: dict[str, dict] = {}
+    model = results[0].model if results else ""
+    for base_id, rs in by_task.items():
+        rs = sorted(rs, key=lambda r: r.trial)
+        trials = []
+        passes = 0
+        for r in rs:
+            passed = r.max_score > 0 and (r.score / r.max_score) >= pass_threshold
+            if passed:
+                passes += 1
+            trials.append(
+                {
+                    "trial": r.trial,
+                    "dir": r.task_id,
+                    "score": r.score,
+                    "max_score": r.max_score,
+                    "passed": passed,
+                    "status": r.status,
+                    "n_steps": r.n_steps,
+                    "duration_s": r.duration_s,
+                    "cost_usd": r.cost_usd,
+                }
+            )
+        tasks[base_id] = {
+            "n_trials": len(rs),
+            "passes": passes,
+            "pass_rate": (passes / len(rs)) if rs else 0.0,
+            "trials": trials,
+        }
+
+    return {
+        "n_trials": n_trials,
+        "pass_threshold": pass_threshold,
+        "model": model,
+        "tasks": tasks,
+    }
+
+
+def run_grading_script(task: Task, env: "Env", task_dir: Path) -> dict | None:
+    """Run a task's host-side grading_script and return its parsed JSON payload.
+
+    The script runs on the LINUX HOST via `uv run python <script>`, with a JSON
+    context on stdin giving it the guest SSH coordinates (so it can scp/ssh to
+    pull artifacts), the task id, and a fresh scratch temp dir. It must print one
+    JSON line: {"score","max_score","checkpoints":[...],"log"}.
+
+    Returns None when the task has no grading_script (the common case), so legacy
+    tasks are unaffected.
+    """
+    script = task.resolve_grading_script()
+    if script is None:
+        return None
+    if not script.exists():
+        log.warning(f"grading_script not found: {script}")
+        return {"score": 0, "max_score": 0, "checkpoints": [], "log": f"script not found: {script}"}
+
+    conn = env.guest_conn() if hasattr(env, "guest_conn") else None
+    with tempfile.TemporaryDirectory(prefix=f"grade-{task.id}-") as scratch:
+        ctx = {
+            "task_id": task.id,
+            "category": task.category,
+            "guest_conn": conn,
+            "scratch_dir": scratch,
+            "task_dir": str(task.task_dir) if task.task_dir else None,
+        }
+        log.info(f"grading_script: {script.name}")
+        try:
+            proc = subprocess.run(
+                ["uv", "run", "python", str(script)],
+                input=json.dumps(ctx),
+                capture_output=True,
+                text=True,
+                timeout=300,
+            )
+        except subprocess.TimeoutExpired:
+            log.warning("grading_script timed out")
+            return {"score": 0, "max_score": 0, "checkpoints": [], "log": "grading_script timeout"}
+        # The verifier's JSON is the LAST non-empty stdout line (so it can also log freely).
+        out_lines = [ln for ln in (proc.stdout or "").splitlines() if ln.strip()]
+        for line in reversed(out_lines):
+            try:
+                return json.loads(line)
+            except json.JSONDecodeError:
+                continue
+        log.warning(f"grading_script produced no JSON (rc={proc.returncode}): {proc.stderr.strip()[:200]}")
+        return {"score": 0, "max_score": 0, "checkpoints": [], "log": f"no JSON output (rc={proc.returncode})"}
 
 
 def run_task(
@@ -102,13 +224,18 @@ def run_task(
     *,
     backend: str = "use-computer",
     fleet: "KvmFleet | None" = None,
+    trial: int | None = None,
 ) -> TaskResult:
-    task_dir = run_dir / task.id
+    # When running multiple trials, each rollout gets a FLAT sibling dir/task_id
+    # `<task.id>__t<NN>` under run_dir (nested dirs break the dashboard's routing).
+    # trial=None reproduces the byte-identical single-trial layout of today.
+    out_id = task.id if trial is None else f"{task.id}__t{trial:02d}"
+    task_dir = run_dir / out_id
     (task_dir / "context").mkdir(parents=True, exist_ok=True)
 
     # Tag every line for this task so concurrent fleet output stays greppable.
     # Upgraded to include the guest/sandbox id once the env exists.
-    tag = f"{task.category}/{task.id[:8]}"
+    tag = f"{task.category}/{out_id[:8]}"
     log.info(f"[{tag}] START {model_id} :: {task.instruction[:90]}")
 
     t0 = time.time()
@@ -116,7 +243,10 @@ def run_task(
     slot = None
     status = "error"
     error_str = ""
-    score = 0
+    score: float = 0
+    # Fallback max if grading never runs (error before grade): the task's declared
+    # weights, defaulting to the legacy 100 so existing tasks/dashboards are stable.
+    max_score: float = sum(w for _, w in task.grading_command) or 100
     grade_log: list[dict] = []
     agent: Agent | None = None
     sandbox_id = ""
@@ -165,8 +295,14 @@ def run_task(
 
         if task.before_grading_delay:
             time.sleep(task.before_grading_delay)
-        score, grade_log = env.grade(task)
-        log.info(f"[{tag}] score: {score}")
+        score, max_score, grade_log = env.grade(task)
+        # Optional host-side verifier — runs on the Linux host after in-guest grading,
+        # and its score/max_score fold additively into the in-guest checkpoints.
+        script_result = run_grading_script(task, env, task_dir)
+        score, max_score, grade_log = fold_script_result(score, max_score, grade_log, script_result)
+        score = normalize_score(score)
+        max_score = normalize_score(max_score)
+        log.info(f"[{tag}] score: {score}/{max_score}")
     except Exception as e:
         log.error(f"[{tag}] ERROR {type(e).__name__}: {e}\n{traceback.format_exc()}")
         error_str = f"{type(e).__name__}: {e}"
@@ -192,11 +328,11 @@ def run_task(
     in_tok = agent.total_input_tokens if agent else 0
     out_tok = agent.total_output_tokens if agent else 0
     result = TaskResult(
-        task_id=task.id,
+        task_id=out_id,
         category=task.category,
         model=model_id,
         score=score,
-        max_score=100,
+        max_score=max_score,
         n_steps=len(agent.steps) if agent else 0,
         status=status,
         duration_s=round(time.time() - t0, 2),
@@ -205,6 +341,8 @@ def run_task(
         cost_usd=_cost_usd(model_id, in_tok, out_tok),
         sandbox_id=sandbox_id,
         error=error_str,
+        base_task_id=task.id,
+        trial=trial or 0,
     )
     (task_dir / "result.json").write_text(json.dumps(asdict(result) | {"grade_log": grade_log}, indent=2))
     return result

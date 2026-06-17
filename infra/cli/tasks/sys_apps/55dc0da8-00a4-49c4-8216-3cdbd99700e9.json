@@ -6,5 +6,8 @@
   "pre_command": "defaults -currentHost write com.apple.screensaver idleTime -int 0; defaults write com.apple.screensaver askForPasswordDelay -int 0; defaults write com.apple.screensaver askForPassword -int 1; sleep 1",
   "before_action_delay_seconds": 10,
   "before_grading_delay_seconds": 30,
-  "grading_command": [["killall cfprefsd 2>/dev/null; sleep 2; IT=$(defaults -currentHost read com.apple.screensaver idleTime 2>/dev/null); IT2=$(defaults read com.apple.screensaver idleTime 2>/dev/null); AD=$(defaults read com.apple.screensaver askForPasswordDelay 2>/dev/null); AD2=$(defaults -currentHost read com.apple.screensaver askForPasswordDelay 2>/dev/null); ( [ \"$IT\" = \"300\" ] || [ \"$IT2\" = \"300\" ] ) && ( [ \"$AD\" = \"5\" ] || [ \"$AD2\" = \"5\" ] ) && echo True || echo False", 100]]
+  "grading_command": [
+    ["killall cfprefsd 2>/dev/null; sleep 2; IT=$(defaults -currentHost read com.apple.screensaver idleTime 2>/dev/null); IT2=$(defaults read com.apple.screensaver idleTime 2>/dev/null); ( [ \"$IT\" = \"300\" ] || [ \"$IT2\" = \"300\" ] ) && echo True || echo False", 50],
+    ["killall cfprefsd 2>/dev/null; sleep 2; AD=$(defaults read com.apple.screensaver askForPasswordDelay 2>/dev/null); AD2=$(defaults -currentHost read com.apple.screensaver askForPasswordDelay 2>/dev/null); ( [ \"$AD\" = \"5\" ] || [ \"$AD2\" = \"5\" ] ) && echo True || echo False", 50]
+  ]
 }

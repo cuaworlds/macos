@@ -257,12 +257,170 @@ pre {
 .task-card {
   margin: 0 0 12px;
 }
+.task-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.trial-pill {
+  color: var(--accent);
+  background: var(--accent-bg);
+  border-color: rgba(125, 211, 252, 0.3);
+}
 .task-text {
   white-space: pre-wrap;
   word-break: break-word;
   line-height: 1.55;
   font-size: 13px;
   color: var(--text);
+}
+
+/* --- run header: title + rollout count + grouped/flat toggle --- */
+.run-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin: 8px 0 14px;
+}
+.run-meta {
+  font-size: 12px;
+}
+.view-toggle {
+  margin-left: auto;
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.view-toggle button {
+  padding: 5px 12px;
+  font-size: 12px;
+  background: var(--panel);
+  color: var(--muted);
+  border: none;
+  cursor: pointer;
+}
+.view-toggle button.active {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+/* --- grouped run table --- */
+.table th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+.table th.sortable:hover {
+  color: var(--text);
+}
+.table.grouped tr.grp:hover {
+  background: var(--panel-2);
+}
+.table.grouped td {
+  vertical-align: middle;
+}
+/* left difficulty stripe per band */
+.table.grouped tr.grp td:first-child {
+  border-left: 3px solid transparent;
+}
+.table.grouped tr.band-target td:first-child {
+  border-left-color: var(--amber);
+}
+.table.grouped tr.band-easy td:first-child {
+  border-left-color: var(--green);
+}
+.table.grouped tr.band-hard td:first-child {
+  border-left-color: rgba(252, 165, 165, 0.45);
+}
+
+.task-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.task-id-short {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--accent);
+}
+.cat-tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+.band-tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+.band-tag.band-target {
+  color: var(--amber);
+  background: var(--amber-bg);
+}
+.band-tag.band-easy {
+  color: var(--green);
+  background: var(--green-bg);
+}
+.band-tag.band-hard {
+  color: var(--red);
+  background: var(--red-bg);
+}
+.task-snippet {
+  font-size: 12px;
+  margin-top: 3px;
+  max-width: 52ch;
+}
+.pass-frac {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* per-trial score chips (clickable -> that rollout's trajectory) */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.trial-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 11px;
+  text-decoration: none;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--muted);
+}
+.trial-chip:hover {
+  outline: 1px solid var(--accent);
+}
+.trial-chip.pass {
+  color: var(--green);
+  background: var(--green-bg);
+  border-color: rgba(134, 239, 172, 0.3);
+}
+.trial-chip.partial {
+  color: var(--amber);
+  background: var(--amber-bg);
+  border-color: rgba(252, 211, 77, 0.3);
+}
+.trial-chip.zero {
+  color: var(--red);
+  background: var(--red-bg);
+  border-color: rgba(252, 165, 165, 0.25);
 }
 
 /* --- screenshot + click overlay --- */

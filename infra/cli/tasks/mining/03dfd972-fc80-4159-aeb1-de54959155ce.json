@@ -1,0 +1,15 @@
+{
+  "id": "03dfd972-fc80-4159-aeb1-de54959155ce",
+  "snapshot": {"en": "snapshot_used_en"},
+  "force_snapshot_recovery": true,
+  "task": {"en": "Open Notes and create a new note titled exactly `System Snapshot`. Read the current values from System Settings → General → About and record exactly these THREE lines in the body (one per line, in this order):\n```\nModel: <model name, e.g. MacBook Pro>\nmacOS: <version, e.g. 14.5>\nMemory: <NN GB>\n```\nGet `Model` and `Memory` from the About page, and `macOS` from the version shown on the same page. Do not add any other notes."},
+  "pre_command": "tccutil reset AppleEvents com.apple.Notes 2>/dev/null; killall -9 Notes osascript 2>/dev/null; UDB=\"$HOME/Library/Application Support/com.apple.TCC/TCC.db\"; sqlite3 \"$UDB\" \"INSERT OR REPLACE INTO access (service,client,client_type,auth_value,auth_reason,auth_version,csreq,indirect_object_identifier_type,indirect_object_identifier,flags) VALUES ('kTCCServiceAppleEvents','/usr/libexec/sshd-keygen-wrapper',1,2,3,1,NULL,0,'com.apple.Notes',0);\" 2>/dev/null; (sudo killall tccd 2>/dev/null; killall tccd 2>/dev/null); sleep 4; open -gj -a Notes 2>/dev/null; sleep 8; osascript -e 'tell application \"Notes\" to delete every note' -e 'tell application \"Notes\" to delete every note in folder \"Recently Deleted\"' -e 'tell application \"Notes\" to quit' 2>/dev/null; sleep 1",
+  "before_action_delay_seconds": 10,
+  "before_grading_delay_seconds": 30,
+  "grading_command": [
+    ["N=$(osascript -e 'tell application \"Notes\" to get name of every note' 2>/dev/null); echo \"$N\" | grep -qi 'System Snapshot' && echo True || echo False", 25],
+    ["NBSP=$(printf '\\302\\240'); BODY=$(osascript -e 'tell application \"Notes\" to get body of every note' 2>/dev/null | sed -e 's/<[^>]*>/ /g' | tr '\\n' ' ' | sed \"s/$NBSP/ /g\" | tr -s ' \\t'); printf '%s' \"$BODY\" | grep -qiE 'model:[[:space:]]*[a-z]' && echo True || echo False", 20],
+    ["NBSP=$(printf '\\302\\240'); V=$(sw_vers -productVersion 2>/dev/null); BODY=$(osascript -e 'tell application \"Notes\" to get body of every note' 2>/dev/null | sed -e 's/<[^>]*>/ /g' | tr '\\n' ' ' | sed \"s/$NBSP/ /g\" | tr -s ' \\t'); printf '%s' \"$BODY\" | grep -qF \"$V\" && echo True || echo False", 30],
+    ["NBSP=$(printf '\\302\\240'); R=$(( $(sysctl -n hw.memsize 2>/dev/null) / 1073741824 )); BODY=$(osascript -e 'tell application \"Notes\" to get body of every note' 2>/dev/null | sed -e 's/<[^>]*>/ /g' | tr '\\n' ' ' | sed \"s/$NBSP/ /g\" | tr -s ' \\t'); printf '%s' \"$BODY\" | grep -qiE \"memory:[^0-9]*${R} *gb\" && echo True || echo False", 25]
+  ]
+}

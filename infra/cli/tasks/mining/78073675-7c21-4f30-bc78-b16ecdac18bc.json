@@ -1,0 +1,13 @@
+{
+  "id": "78073675-7c21-4f30-bc78-b16ecdac18bc",
+  "snapshot": {"en": "snapshot_used_en"},
+  "force_snapshot_recovery": true,
+  "task": {"en": "Open the Stickies app and create a new sticky note (File menu, New Note). In that note, type the following two lines exactly, on separate lines:\n\nGarage code: 4417\nTrash day: Thursday\n\nLeave the note open so it is saved. Do not edit the existing welcome notes."},
+  "pre_command": "killall Stickies 2>/dev/null; sleep 2; SDIR=\"$HOME/Library/Containers/com.apple.Stickies/Data/Library/Stickies\"; for d in \"$SDIR\"/*.rtfd; do [ -e \"$d/TXT.rtf\" ] || continue; if grep -ql 'Garage code: 4417' \"$d/TXT.rtf\" 2>/dev/null || grep -ql 'Trash day: Thursday' \"$d/TXT.rtf\" 2>/dev/null; then rm -rf \"$d\"; fi; done",
+  "before_action_delay_seconds": 10,
+  "before_grading_delay_seconds": 30,
+  "grading_command": [
+    ["killall Stickies 2>/dev/null; sleep 2; SDIR=\"$HOME/Library/Containers/com.apple.Stickies/Data/Library/Stickies\"; found=0; for d in \"$SDIR\"/*.rtfd; do [ -e \"$d/TXT.rtf\" ] || continue; txt=$(textutil -convert txt -stdout \"$d/TXT.rtf\" 2>/dev/null); case \"$txt\" in *\"Garage code: 4417\"*) found=$((found+1));; esac; done; [ \"$found\" -ge 1 ] && echo True || echo False", 50],
+    ["killall Stickies 2>/dev/null; sleep 2; SDIR=\"$HOME/Library/Containers/com.apple.Stickies/Data/Library/Stickies\"; found=0; for d in \"$SDIR\"/*.rtfd; do [ -e \"$d/TXT.rtf\" ] || continue; txt=$(textutil -convert txt -stdout \"$d/TXT.rtf\" 2>/dev/null); case \"$txt\" in *\"Garage code: 4417\"*\"Trash day: Thursday\"*) found=$((found+1));; esac; done; [ \"$found\" -ge 1 ] && echo True || echo False", 50]
+  ]
+}

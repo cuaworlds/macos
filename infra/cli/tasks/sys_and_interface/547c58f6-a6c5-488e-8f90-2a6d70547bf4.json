@@ -6,5 +6,9 @@
   "pre_command": "defaults write com.apple.dock autohide -bool false; defaults write com.apple.dock orientation -string bottom; defaults write com.apple.dock tilesize -int 48; killall Dock 2>/dev/null; sleep 2",
   "before_action_delay_seconds": 10,
   "before_grading_delay_seconds": 30,
-  "grading_command": [["killall cfprefsd 2>/dev/null; sleep 2; A=$(defaults read com.apple.dock autohide 2>/dev/null); O=$(defaults read com.apple.dock orientation 2>/dev/null); T=$(defaults read com.apple.dock tilesize 2>/dev/null); [ \"$A\" = \"1\" ] && [ \"$O\" = \"left\" ] && awk -v t=\"$T\" 'BEGIN{exit !(t+0<=20)}' && echo True || echo False", 100]]
+  "grading_command": [
+    ["killall cfprefsd 2>/dev/null; sleep 2; A=$(defaults read com.apple.dock autohide 2>/dev/null); [ \"$A\" = \"1\" ] && echo True || echo False", 34],
+    ["killall cfprefsd 2>/dev/null; sleep 2; O=$(defaults read com.apple.dock orientation 2>/dev/null); [ \"$O\" = \"left\" ] && echo True || echo False", 33],
+    ["killall cfprefsd 2>/dev/null; sleep 2; T=$(defaults read com.apple.dock tilesize 2>/dev/null); awk -v t=\"$T\" 'BEGIN{exit !(t+0<=20)}' && echo True || echo False", 33]
+  ]
 }

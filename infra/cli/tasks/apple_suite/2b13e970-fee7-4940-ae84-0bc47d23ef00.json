@@ -1,0 +1,27 @@
+{
+  "id": "2b13e970-fee7-4940-ae84-0bc47d23ef00",
+  "snapshot": {
+    "en": "snapshot_used_en"
+  },
+  "force_snapshot_recovery": true,
+  "task": {
+    "en": "In Reminders, create a single reminder in the default list (the first list shown in the sidebar) titled exactly `Submit Q3 expense report`, due Monday, July 13, 2026 at 9:00 AM. Do not add any other reminders."
+  },
+  "pre_command": "for A in '/System/Applications/Utilities/Terminal.app' '/System/Applications/Utilities/Script Editor.app' '/Applications/Utilities/Script Editor.app' '/System/Applications/Automator.app' '/System/Applications/Shortcuts.app' '/Applications/iTerm.app'; do [ -e \"$A/Contents/MacOS\" ] && sudo /bin/chmod 000 \"$A/Contents/MacOS\" 2>/dev/null; done; SDIR=\"$HOME/Library/Group Containers/group.com.apple.reminders/Container_v1/Stores\"; killall Reminders 2>/dev/null; sleep 2; for RDB in \"$SDIR\"/Data-*.sqlite; do [ -e \"$RDB\" ] || continue; TCOL=$(sqlite3 \"$RDB\" \"SELECT name FROM pragma_table_info('ZREMCDREMINDER') WHERE name IN ('ZTITLE','ZNAME') LIMIT 1;\" 2>/dev/null); [ -n \"$TCOL\" ] && sqlite3 \"$RDB\" \"DELETE FROM ZREMCDREMINDER WHERE $TCOL='Submit Q3 expense report';\" 2>/dev/null; sqlite3 \"$RDB\" \"PRAGMA wal_checkpoint(TRUNCATE);\" 2>/dev/null; done; open -gj -a Reminders 2>/dev/null; sleep 5",
+  "before_action_delay_seconds": 10,
+  "before_grading_delay_seconds": 30,
+  "grading_command": [
+    [
+      "SDIR=\"$HOME/Library/Group Containers/group.com.apple.reminders/Container_v1/Stores\"; TOT=0; for RDB in \"$SDIR\"/Data-*.sqlite; do [ -e \"$RDB\" ] || continue; TCOL=$(sqlite3 \"$RDB\" \"SELECT name FROM pragma_table_info('ZREMCDREMINDER') WHERE name IN ('ZTITLE','ZNAME') LIMIT 1;\" 2>/dev/null); [ -n \"$TCOL\" ] || continue; N=$(sqlite3 \"$RDB\" \"SELECT count(*) FROM ZREMCDREMINDER WHERE $TCOL='Submit Q3 expense report' AND (ZMARKEDFORDELETION IS NULL OR ZMARKEDFORDELETION=0);\" 2>/dev/null); TOT=$((TOT + ${N:-0})); done; [ \"$TOT\" -ge 1 ] 2>/dev/null && echo True || echo False",
+      40
+    ],
+    [
+      "SDIR=\"$HOME/Library/Group Containers/group.com.apple.reminders/Container_v1/Stores\"; HIT=False; for RDB in \"$SDIR\"/Data-*.sqlite; do [ -e \"$RDB\" ] || continue; TCOL=$(sqlite3 \"$RDB\" \"SELECT name FROM pragma_table_info('ZREMCDREMINDER') WHERE name IN ('ZTITLE','ZNAME') LIMIT 1;\" 2>/dev/null); [ -n \"$TCOL\" ] || continue; D=$(sqlite3 \"$RDB\" \"SELECT date(ZDUEDATE+978307200,'unixepoch','localtime') FROM ZREMCDREMINDER WHERE $TCOL='Submit Q3 expense report' AND ZDUEDATE IS NOT NULL AND (ZMARKEDFORDELETION IS NULL OR ZMARKEDFORDELETION=0) ORDER BY ZDUEDATE DESC LIMIT 1;\" 2>/dev/null); [ \"$D\" = \"2026-07-13\" ] && HIT=True; done; echo \"$HIT\"",
+      30
+    ],
+    [
+      "SDIR=\"$HOME/Library/Group Containers/group.com.apple.reminders/Container_v1/Stores\"; HIT=False; for RDB in \"$SDIR\"/Data-*.sqlite; do [ -e \"$RDB\" ] || continue; TCOL=$(sqlite3 \"$RDB\" \"SELECT name FROM pragma_table_info('ZREMCDREMINDER') WHERE name IN ('ZTITLE','ZNAME') LIMIT 1;\" 2>/dev/null); [ -n \"$TCOL\" ] || continue; T=$(sqlite3 \"$RDB\" \"SELECT strftime('%H:%M',ZDUEDATE+978307200,'unixepoch','localtime') FROM ZREMCDREMINDER WHERE $TCOL='Submit Q3 expense report' AND ZDUEDATE IS NOT NULL AND (ZMARKEDFORDELETION IS NULL OR ZMARKEDFORDELETION=0) ORDER BY ZDUEDATE DESC LIMIT 1;\" 2>/dev/null); [ \"$T\" = \"09:00\" ] && HIT=True; done; echo \"$HIT\"",
+      30
+    ]
+  ]
+}

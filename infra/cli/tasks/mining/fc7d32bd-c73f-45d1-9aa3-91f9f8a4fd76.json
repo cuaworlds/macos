@@ -1,0 +1,14 @@
+{
+  "id": "fc7d32bd-c73f-45d1-9aa3-91f9f8a4fd76",
+  "snapshot": {"en": "snapshot_used_en"},
+  "force_snapshot_recovery": true,
+  "task": {"en": "Using TextEdit, create a new plain-text document (if it opens in Rich Text, use Format menu → Make Plain Text first). Type these three words, one per line:\n```\napple\nbanana\ncherry\n```\nThen save the file as `~/Desktop/fruits.txt` (⌘S, name it `fruits.txt`, choose the Desktop, format Plain Text). Capitalization and minor autocorrect differences are fine — just get the three words on three lines in this order and save to the Desktop."},
+  "pre_command": "rm -f \"$HOME/Desktop/fruits.txt\"; osascript -e 'tell application \"TextEdit\" to quit' 2>/dev/null; sleep 1",
+  "before_action_delay_seconds": 10,
+  "before_grading_delay_seconds": 30,
+  "grading_command": [
+    ["[ -f \"$HOME/Desktop/fruits.txt\" ] && echo True || echo False", 30],
+    ["F=\"$HOME/Desktop/fruits.txt\"; [ -f \"$F\" ] && tr 'A-Z' 'a-z' < \"$F\" | grep -q 'apple' && tr 'A-Z' 'a-z' < \"$F\" | grep -q 'banana' && tr 'A-Z' 'a-z' < \"$F\" | grep -q 'cherry' && echo True || echo False", 30],
+    ["F=\"$HOME/Desktop/fruits.txt\"; [ -f \"$F\" ] && tr 'A-Z' 'a-z' < \"$F\" | grep -vE '^[[:space:]]*$' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | awk 'NR==1{a=($0==\"apple\")} NR==2{b=($0==\"banana\")} NR==3{c=($0==\"cherry\")} END{ if(a&&b&&c) print \"True\"; else print \"False\" }' || echo False", 40]
+  ]
+}
