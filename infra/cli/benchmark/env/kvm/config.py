@@ -53,6 +53,12 @@ class KvmConfig:
     #   "copy"    — full `cp` of the 16 GiB base per guest (slow on ext4); kept as fallback.
     disk_mode: str = "overlay"
     qcow2_base_dir: Path | None = None  # overlay mode: where the shared base.qcow2 lives
+    # Optional +apps layer (RFC 0002 §7.1 L1). When set (overlay mode), the per-guest
+    # instance overlay is parented to this frozen layer's <ver>/data.qcow2 instead of
+    # the bare base, and the chain at runtime is instance -> +apps -> os-base. The dir
+    # is the freeze-layer.sh content-addressed layer dir (holds <ver>/data.qcow2 whose
+    # own backing_file=/base/data.qcow2). None == legacy bare-base behaviour, unchanged.
+    apps_layer_dir: Path | None = None
     image: str = "dockurr/macos:latest"
     macos_version: str = "14"
     ram_gb: int = 4
@@ -80,6 +86,12 @@ class KvmConfig:
             self.qcow2_base_dir = self.volumes_dir / "_base_qcow2"
         else:
             self.qcow2_base_dir = Path(self.qcow2_base_dir)
+        if self.apps_layer_dir is not None:
+            self.apps_layer_dir = Path(self.apps_layer_dir)
+
+    @property
+    def has_apps_layer(self) -> bool:
+        return self.disk_mode == "overlay" and self.apps_layer_dir is not None
 
     @property
     def is_remote(self) -> bool:

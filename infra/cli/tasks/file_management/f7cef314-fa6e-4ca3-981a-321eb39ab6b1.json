@@ -3,8 +3,12 @@
   "snapshot": {"en": "snapshot_used_en"},
   "force_snapshot_recovery": true,
   "task": {"en": "Using TextEdit, create a new document. If it opens in Rich Text mode, switch it to plain text first (Format menu → Make Plain Text, or ⇧⌘T). Type exactly the three lines below (no extra lines, no trailing blank line beyond a single newline at the end):\n```\none\ntwo\nthree\n```\nSave the file to `~/Desktop/notes.txt` (use ⌘S, name it `notes.txt`, choose the Desktop, and make sure the format is Plain Text)."},
-  "pre_command": "rm -f /Users/ec2-user/Desktop/notes.txt; osascript -e 'tell application \"TextEdit\" to quit' 2>/dev/null; sleep 1",
+  "pre_command": "rm -f \"$HOME/Desktop/notes.txt\"; osascript -e 'tell application \"TextEdit\" to quit' 2>/dev/null; sleep 1",
   "before_action_delay_seconds": 10,
   "before_grading_delay_seconds": 30,
-  "grading_command": [["printf 'one\\ntwo\\nthree\\n' > /tmp/_expected_notes.txt && [ -f /Users/ec2-user/Desktop/notes.txt ] && cmp -s /tmp/_expected_notes.txt /Users/ec2-user/Desktop/notes.txt && echo True || echo False", 100]]
+  "grading_command": [
+    ["[ -f \"$HOME/Desktop/notes.txt\" ] && echo True || echo False", 30],
+    ["awk 'NR==1{a=($0==\"one\")} NR==2{b=($0==\"two\")} NR==3{c=($0==\"three\")} END{ if(a&&b&&c) print \"True\"; else print \"False\" }' \"$HOME/Desktop/notes.txt\" 2>/dev/null", 30],
+    ["printf 'one\\ntwo\\nthree\\n' > /tmp/_expected_notes.txt && cmp -s /tmp/_expected_notes.txt \"$HOME/Desktop/notes.txt\" && echo True || echo False", 40]
+  ]
 }

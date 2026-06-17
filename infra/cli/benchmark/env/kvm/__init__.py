@@ -17,6 +17,7 @@ from PIL import Image
 
 from benchmark.config import DISPLAY_HEIGHT, DISPLAY_WIDTH
 from benchmark.env.base import Screenshot
+from benchmark.grading import grade_checkpoints
 from benchmark.env.kvm.config import KvmConfig
 from benchmark.env.kvm.fleet import FleetSlot, KvmFleet
 from benchmark.env.kvm.rfb import RfbError
@@ -195,22 +196,24 @@ class KvmMacOSEnv:
                     f"{res.stderr.strip()[:120]}"
                 )
 
-    def grade(self, task: Task) -> tuple[int, list[dict]]:
-        """Run grading_command list; first command worth 100 returning 'true' wins."""
-        log: list[dict] = []
-        for cmd, value in task.grading_command:
-            if value != 100:
-                continue
+    def grade(self, task: Task) -> tuple[float, float, list[dict]]:
+        """Evaluate weighted grading checkpoints over SSH (see benchmark.grading)."""
+
+        def _exec(cmd: str) -> tuple[int, str, str]:
             res = self._ssh.exec(cmd, timeout=60)
-            if res.rc == 124:
-                log.append({"cmd": cmd[:200], "value": value, "error": "ssh timeout"})
-                continue
-            output = (res.stdout or "").strip().lower()
-            hit = "true" in output
-            log.append({"cmd": cmd[:200], "value": value, "stdout": output[:200], "hit": hit})
-            if hit:
-                return value, log
-        return 0, log
+            return res.rc, res.stdout or "", res.stderr or ""
+
+        return grade_checkpoints(task.grading_command, _exec)
+
+    def guest_conn(self) -> dict | None:
+        """SSH coordinates so a host-side grading_script can reach this guest."""
+        cfg = self.slot.cfg
+        return {
+            "host": self.slot.host,
+            "port": self.slot.ssh_port,
+            "user": cfg.ssh_user,
+            "key_path": str(cfg.ssh_key),
+        }
 
     # --- cleanup ---
 

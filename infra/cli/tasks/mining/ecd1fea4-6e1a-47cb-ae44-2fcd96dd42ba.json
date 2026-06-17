@@ -1,0 +1,14 @@
+{
+  "id": "ecd1fea4-6e1a-47cb-ae44-2fcd96dd42ba",
+  "snapshot": {"en": "snapshot_used_en"},
+  "force_snapshot_recovery": true,
+  "task": {"en": "In System Settings → Desktop & Dock, scroll to the bottom and click `Hot Corners…`. Set ONLY the bottom-right corner to `Start Screen Saver`, then click Done to save. Leave the other three corners unchanged (set to `-` / no action)."},
+  "pre_command": "for C in tl tr bl br; do defaults write com.apple.dock wvous-$C-corner -int 1 2>/dev/null; defaults write com.apple.dock wvous-$C-modifier -int 0 2>/dev/null; done; killall cfprefsd 2>/dev/null; killall Dock 2>/dev/null; sleep 2",
+  "before_action_delay_seconds": 10,
+  "before_grading_delay_seconds": 30,
+  "grading_command": [
+    ["killall cfprefsd 2>/dev/null; sleep 2; BR=$(defaults read com.apple.dock wvous-br-corner 2>/dev/null); [ \"$BR\" = \"5\" ] && echo True || echo False", 55],
+    ["killall cfprefsd 2>/dev/null; sleep 2; TL=$(defaults read com.apple.dock wvous-tl-corner 2>/dev/null); BL=$(defaults read com.apple.dock wvous-bl-corner 2>/dev/null); TR=$(defaults read com.apple.dock wvous-tr-corner 2>/dev/null); ( [ \"$TL\" != \"5\" ] && [ \"$BL\" != \"5\" ] && [ \"$TR\" != \"5\" ] ) && echo True || echo False", 30],
+    ["killall cfprefsd 2>/dev/null; sleep 2; BR=$(defaults read com.apple.dock wvous-br-corner 2>/dev/null); [ -n \"$BR\" ] && [ \"$BR\" != \"1\" ] && echo True || echo False", 15]
+  ]
+}

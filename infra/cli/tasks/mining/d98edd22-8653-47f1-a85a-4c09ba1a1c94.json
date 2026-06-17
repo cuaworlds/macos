@@ -1,0 +1,15 @@
+{
+  "id": "d98edd22-8653-47f1-a85a-4c09ba1a1c94",
+  "snapshot": {"en": "snapshot_used_en"},
+  "force_snapshot_recovery": true,
+  "task": {"en": "In Notes, create TWO separate notes.\n\nThe first note is titled exactly `Sprint Plan` and its body must contain these three lines after the title:\n```\nLead: Dana Okafor\nStart: 2026-08-03\nDemo: Friday Aug 21\n```\n\nThe second, separate note is titled exactly `Sprint Risks` and its body must contain these two lines after the title:\n```\nRisk: vendor API slip\nMitigation: parallel mock service\n```\n\nCreate both as distinct notes. Do not add any other notes."},
+  "pre_command": "tccutil reset AppleEvents com.apple.Notes 2>/dev/null; killall -9 Notes osascript 2>/dev/null; UDB=\"$HOME/Library/Application Support/com.apple.TCC/TCC.db\"; sqlite3 \"$UDB\" \"INSERT OR REPLACE INTO access (service,client,client_type,auth_value,auth_reason,auth_version,csreq,indirect_object_identifier_type,indirect_object_identifier,flags) VALUES ('kTCCServiceAppleEvents','/usr/libexec/sshd-keygen-wrapper',1,2,3,1,NULL,0,'com.apple.Notes',0);\" 2>/dev/null; (sudo killall tccd 2>/dev/null; killall tccd 2>/dev/null); sleep 4; open -gj -a Notes 2>/dev/null; sleep 8; osascript -e 'tell application \"Notes\" to delete every note' -e 'tell application \"Notes\" to delete every note in folder \"Recently Deleted\"' -e 'tell application \"Notes\" to quit' 2>/dev/null; sleep 1",
+  "before_action_delay_seconds": 10,
+  "before_grading_delay_seconds": 30,
+  "grading_command": [
+    ["N=$(osascript -e 'tell application \"Notes\" to get name of every note' 2>/dev/null); echo \"$N\" | grep -qF 'Sprint Plan' && echo True || echo False", 20],
+    ["NBSP=$(printf '\\302\\240'); B=$(osascript -e 'tell application \"Notes\" to get body of note \"Sprint Plan\"' 2>/dev/null | sed -e 's/<[^>]*>/ /g' | tr '\\n' ' ' | sed \"s/$NBSP/ /g\" | tr -s ' \\t'); ( printf '%s' \"$B\" | grep -qF 'Lead: Dana Okafor' ) && ( printf '%s' \"$B\" | grep -qF 'Demo: Friday Aug 21' ) && echo True || echo False", 30],
+    ["N=$(osascript -e 'tell application \"Notes\" to get name of every note' 2>/dev/null); echo \"$N\" | grep -qF 'Sprint Risks' && echo True || echo False", 20],
+    ["NBSP=$(printf '\\302\\240'); B=$(osascript -e 'tell application \"Notes\" to get body of note \"Sprint Risks\"' 2>/dev/null | sed -e 's/<[^>]*>/ /g' | tr '\\n' ' ' | sed \"s/$NBSP/ /g\" | tr -s ' \\t'); ( printf '%s' \"$B\" | grep -qF 'Risk: vendor API slip' ) && ( printf '%s' \"$B\" | grep -qF 'Mitigation: parallel mock service' ) && echo True || echo False", 30]
+  ]
+}

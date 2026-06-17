@@ -1,0 +1,16 @@
+{
+  "id": "d5bbdfda-abc5-4e01-8c91-080ba5f13653",
+  "snapshot": {"en": "snapshot_used_en"},
+  "force_snapshot_recovery": true,
+  "task": {"en": "Open Notes and create a new note titled exactly `Project Atlas Kickoff`. The body must contain the following four lines (one per line, in this order) after the title:\n```\nOwner: Priya Raman\nStart date: 2026-07-06\nBudget: $48,000\nGoal: ship the v1 dashboard by Q3\n```\nDo not add any other notes. The note can live in the default folder."},
+  "pre_command": "UDB=\"$HOME/Library/Application Support/com.apple.TCC/TCC.db\"; sqlite3 \"$UDB\" \"INSERT OR REPLACE INTO access (service,client,client_type,auth_value,auth_reason,auth_version,csreq,indirect_object_identifier_type,indirect_object_identifier,flags) VALUES ('kTCCServiceAppleEvents','/usr/libexec/sshd-keygen-wrapper',1,2,3,1,NULL,0,'com.apple.Notes',0);\" 2>/dev/null; (sudo killall tccd 2>/dev/null; killall tccd 2>/dev/null); sleep 1; for A in \"/System/Applications/Utilities/Terminal.app\" \"/Applications/iTerm.app\" \"/Applications/iTerm2.app\" \"/System/Applications/Utilities/Script Editor.app\" \"/Applications/Automator.app\" \"/System/Applications/Automator.app\" \"/System/Applications/Shortcuts.app\"; do [ -d \"$A/Contents/MacOS\" ] && (chmod 000 \"$A/Contents/MacOS\" 2>/dev/null || sudo chmod 000 \"$A/Contents/MacOS\" 2>/dev/null); done; osascript -e 'tell application \"Notes\" to delete every note' -e 'tell application \"Notes\" to delete every note in folder \"Recently Deleted\"' -e 'tell application \"Notes\" to quit' 2>/dev/null; sleep 1",
+  "before_action_delay_seconds": 10,
+  "before_grading_delay_seconds": 30,
+  "grading_command": [
+    ["osascript -e 'tell application \"Notes\" to get name of every note' 2>/dev/null | grep -qF 'Project Atlas Kickoff' && echo True || echo False", 20],
+    ["B=$(osascript -e 'tell application \"Notes\" to get body of note \"Project Atlas Kickoff\"' 2>/dev/null); echo \"$B\" | grep -qF 'Owner: Priya Raman' && echo True || echo False", 20],
+    ["B=$(osascript -e 'tell application \"Notes\" to get body of note \"Project Atlas Kickoff\"' 2>/dev/null); echo \"$B\" | grep -qF 'Start date: 2026-07-06' && echo True || echo False", 20],
+    ["B=$(osascript -e 'tell application \"Notes\" to get body of note \"Project Atlas Kickoff\"' 2>/dev/null); echo \"$B\" | grep -qF 'Budget: $48,000' && echo True || echo False", 20],
+    ["B=$(osascript -e 'tell application \"Notes\" to get body of note \"Project Atlas Kickoff\"' 2>/dev/null); echo \"$B\" | grep -qF 'ship the v1 dashboard by Q3' && echo True || echo False", 20]
+  ]
+}

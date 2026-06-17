@@ -1,0 +1,14 @@
+{
+  "id": "809c6a1f-2c36-48f3-beef-7a4ec99b8890",
+  "snapshot": {"en": "snapshot_used_en"},
+  "force_snapshot_recovery": true,
+  "task": {"en": "This task depends on the CURRENT Dock position, which you must look up first.\n\n1. Open System Settings → Desktop & Dock and read `Position on screen` (it is currently set to either Left, Bottom, or Right).\n2. Based on what you read, set `Automatically hide and show the Dock` (same pane) as follows:\n   - If `Position on screen` is `Left`, turn `Automatically hide and show the Dock` ON.\n   - If `Position on screen` is anything else (Bottom or Right), turn `Automatically hide and show the Dock` OFF.\n   Do NOT change the Dock position itself — leave it where it is. Only change the auto-hide setting to match the rule.\n3. Separately, in System Settings → Desktop & Dock, turn ON `Show suggested and recent apps in Dock` (the toggle for recent applications)."},
+  "before_action_delay_seconds": 10,
+  "before_grading_delay_seconds": 30,
+  "pre_command": "if [ $((RANDOM % 2)) -eq 0 ]; then defaults write com.apple.dock orientation -string left; else defaults write com.apple.dock orientation -string bottom; fi; if [ $((RANDOM % 2)) -eq 0 ]; then defaults write com.apple.dock autohide -bool false; else defaults write com.apple.dock autohide -bool true; fi; defaults write com.apple.dock show-recents -bool false; killall Dock 2>/dev/null; sleep 2",
+  "grading_command": [
+    ["killall cfprefsd 2>/dev/null; sleep 2; O=$(defaults read com.apple.dock orientation 2>/dev/null); A=$(defaults read com.apple.dock autohide 2>/dev/null); if [ \"$O\" = \"left\" ]; then [ \"$A\" = \"1\" ] && echo True || echo False; else [ \"$A\" = \"0\" ] && echo True || echo False; fi", 50],
+    ["killall cfprefsd 2>/dev/null; sleep 2; O=$(defaults read com.apple.dock orientation 2>/dev/null); [ -n \"$O\" ] && { [ \"$O\" = \"left\" ] || [ \"$O\" = \"bottom\" ] || [ \"$O\" = \"right\" ]; } && echo True || echo False", 15],
+    ["killall cfprefsd 2>/dev/null; sleep 2; R=$(defaults read com.apple.dock show-recents 2>/dev/null); [ \"$R\" = \"1\" ] && echo True || echo False", 35]
+  ]
+}

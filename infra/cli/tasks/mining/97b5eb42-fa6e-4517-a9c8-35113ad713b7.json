@@ -1,0 +1,13 @@
+{
+  "id": "97b5eb42-fa6e-4517-a9c8-35113ad713b7",
+  "snapshot": {"en": "snapshot_used_en"},
+  "force_snapshot_recovery": true,
+  "task": {"en": "In System Settings → Lock Screen, set `Start Screen Saver when inactive` to `After 5 minutes`. (The inactivity delay must be 5 minutes.)"},
+  "pre_command": "defaults -currentHost write com.apple.screensaver idleTime -int 0; defaults write com.apple.screensaver idleTime -int 0; sleep 1",
+  "before_action_delay_seconds": 10,
+  "before_grading_delay_seconds": 30,
+  "grading_command": [
+    ["killall cfprefsd 2>/dev/null; sleep 2; IT=$(defaults read com.apple.screensaver idleTime 2>/dev/null); IT2=$(defaults -currentHost read com.apple.screensaver idleTime 2>/dev/null); ( [ \"$IT\" = \"300\" ] || [ \"$IT2\" = \"300\" ] ) && echo True || echo False", 70],
+    ["killall cfprefsd 2>/dev/null; sleep 2; IT=$(defaults read com.apple.screensaver idleTime 2>/dev/null); IT2=$(defaults -currentHost read com.apple.screensaver idleTime 2>/dev/null); ( { [ -n \"$IT\" ] && [ \"$IT\" != \"0\" ]; } || { [ -n \"$IT2\" ] && [ \"$IT2\" != \"0\" ]; } ) && echo True || echo False", 30]
+  ]
+}

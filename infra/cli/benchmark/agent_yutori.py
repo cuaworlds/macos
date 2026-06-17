@@ -37,7 +37,6 @@ from benchmark.config import (
     MODEL_CALL_TIMEOUT_S,
     MODEL_CONFIG,
     ONLY_N_MOST_RECENT_IMAGES,
-    SYSTEM_PROMPT,
 )
 from benchmark.dispatch_yutori import dispatch_yutori
 from benchmark.env.base import Env
@@ -48,6 +47,28 @@ TOOL_SET = "browser_tools_core-20260403"
 # Browser-only tools — irrelevant in the macOS sandbox. Disable so the model
 # doesn't waste turns trying to navigate URLs.
 DISABLE_TOOLS = ["goto_url", "refresh", "go_back", "go_forward"]
+
+# Yutori's docs are explicit that a custom *system* prompt DEGRADES n1.5; extra
+# instructions belong in the FIRST USER MESSAGE. n1.5 is also browser-trained, so
+# it tends to look for a URL bar / DOM / xdotool. This short preamble (appended to
+# the task instruction on step 1) re-grounds it in a macOS desktop without fighting
+# the model's training. Keep it terse — long instructions also hurt n1.5.
+DESKTOP_PREAMBLE = (
+    "Note: you are controlling a full macOS desktop, not a browser. There is no "
+    "URL bar and no DOM; navigation tools are unavailable. Use macOS conventions: "
+    "cmd-based keyboard shortcuts (cmd+s to save, cmd+w to close), the menu bar at "
+    "the top of the screen, and Spotlight (cmd+space) to open applications. Press "
+    "Escape or cmd+w if a dialog blocks you. When the task is complete, reply with "
+    "plain text and no action."
+)
+
+
+def _first_user_text(instruction: str) -> str:
+    """Compose the step-1 user message text: task instruction + desktop preamble.
+
+    Pure helper so the composition is testable without a network/client.
+    """
+    return f"{instruction}\n\n{DESKTOP_PREAMBLE}"
 
 
 @dataclass
@@ -83,7 +104,10 @@ class NavigatorAgent:
             base_url=YUTORI_BASE_URL, api_key=api_key, timeout=MODEL_CALL_TIMEOUT_S
         )
 
-        self.messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
+        # No system prompt: Yutori docs say a custom system prompt degrades n1.5.
+        # The instruction + DESKTOP_PREAMBLE is seeded into the first user message
+        # in step() instead (see _first_user_text).
+        self.messages: list[dict] = []
         self.total_input_tokens = 0
         self.total_output_tokens = 0
         self.steps: list[StepRecord] = []
@@ -136,10 +160,12 @@ class NavigatorAgent:
         return response, time.time() - t0
 
     def step(self, step_index: int, max_steps: int, instruction: str) -> StepRecord:
-        # On the first step, seed the conversation with the instruction. The
-        # screenshot is appended right after, just like every subsequent turn.
+        # On the first step, seed the conversation with the instruction + desktop
+        # preamble. The screenshot is appended right after, like every later turn.
         if step_index == 1:
-            self.messages.append({"role": "user", "content": [{"type": "text", "text": instruction}]})
+            self.messages.append(
+                {"role": "user", "content": [{"type": "text", "text": _first_user_text(instruction)}]}
+            )
 
         # Inject a fresh screenshot into the last user/tool message before predict.
         shot = self.env.screenshot()

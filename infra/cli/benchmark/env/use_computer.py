@@ -8,6 +8,7 @@ from use_computer import Computer, SandboxType
 
 from benchmark.config import BASE_URL, DISPLAY_HEIGHT, DISPLAY_WIDTH
 from benchmark.env.base import Screenshot
+from benchmark.grading import grade_checkpoints
 from benchmark.task import Task
 
 
@@ -163,26 +164,19 @@ class MacOSWorldEnv:
         if task.pre_command:
             self.sandbox.exec_ssh(task.pre_command, timeout=60)
 
-    def grade(self, task: Task) -> tuple[int, list[dict]]:
-        """Run grading_command list and return (best_score, per_check_log).
+    def grade(self, task: Task) -> tuple[float, float, list[dict]]:
+        """Evaluate weighted grading checkpoints over exec_ssh (see benchmark.grading)."""
 
-        Mirrors macosworld-vmware/master/utils/evaluator.py:19-31 — only checks worth 100
-        are evaluated; first one returning "true" wins.
-        """
-        log = []
-        for cmd, value in task.grading_command:
-            if value != 100:
-                continue
-            try:
-                result = self.sandbox.exec_ssh(cmd, timeout=60)
-                output = (result.stdout or "").strip().lower()
-                hit = "true" in output
-                log.append({"cmd": cmd[:200], "value": value, "stdout": output[:200], "hit": hit})
-                if hit:
-                    return value, log
-            except Exception as e:
-                log.append({"cmd": cmd[:200], "value": value, "error": f"{type(e).__name__}: {e}"})
-        return 0, log
+        def _exec(cmd: str) -> tuple[int, str, str]:
+            result = self.sandbox.exec_ssh(cmd, timeout=60)
+            rc = getattr(result, "exit_code", getattr(result, "rc", 0)) or 0
+            return rc, result.stdout or "", getattr(result, "stderr", "") or ""
+
+        return grade_checkpoints(task.grading_command, _exec)
+
+    def guest_conn(self) -> dict | None:
+        """Managed sandbox: no direct guest SSH coordinates to expose."""
+        return None
 
     # --- cleanup ---
 

@@ -126,7 +126,15 @@ export default function TrajectoryView() {
 
       {taskDef?.instruction && (
         <div className="card task-card">
-          <div className="label">Task{taskDef.category ? ` · ${taskDef.category}` : ''}</div>
+          <div className="task-card-head">
+            <div className="label">
+              Task{taskDef.category ? ` · ${taskDef.category}` : ''}
+            </div>
+            {(() => {
+              const m = taskId.match(/__t(\d+)$/)
+              return m ? <span className="pill trial-pill">trial {Number(m[1]) + 1}</span> : null
+            })()}
+          </div>
           <div className="task-text">{taskDef.instruction}</div>
         </div>
       )}

@@ -138,7 +138,10 @@ export function runsApi(): Plugin {
         if (req.method !== 'GET') return next()
         try {
           const url = new URL(req.url || '/', 'http://x')
-          const taskId = url.pathname.replace(/^\/+|\/+$/g, '')
+          const raw = url.pathname.replace(/^\/+|\/+$/g, '')
+          // Strip a `__tNN` trial suffix: the task definition on disk is keyed by
+          // the base id, but trajectory dirs carry the per-trial suffix.
+          const taskId = raw.replace(/__t\d+$/, '')
           if (!taskId) return sendJson(res, 400, { error: 'taskId required' })
           const def = await readTaskDef(tasksRoot, taskId)
           if (def === null) return sendJson(res, 404, { error: 'task not found' })

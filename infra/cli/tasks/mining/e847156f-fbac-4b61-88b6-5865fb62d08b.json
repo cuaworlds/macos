@@ -1,0 +1,15 @@
+{
+  "id": "e847156f-fbac-4b61-88b6-5865fb62d08b",
+  "snapshot": {"en": "snapshot_used_en"},
+  "force_snapshot_recovery": true,
+  "task": {"en": "Using Finder, create this nested folder structure on the Desktop: `~/Desktop/Archive/2025/Q4/`. Then, inside the `Q4` folder, create a plain-text file named `notes.txt` whose contents include the text `quarterly archive` somewhere in the file. Exact capitalization and extra whitespace do not matter — the folder structure and the file location are what count."},
+  "pre_command": "rm -rf \"$HOME/Desktop/Archive\"; sleep 1",
+  "before_action_delay_seconds": 10,
+  "before_grading_delay_seconds": 30,
+  "grading_command": [
+    ["[ -d \"$HOME/Desktop/Archive/2025\" ] && echo True || echo False", 25],
+    ["[ -d \"$HOME/Desktop/Archive/2025/Q4\" ] && echo True || echo False", 30],
+    ["[ -f \"$HOME/Desktop/Archive/2025/Q4/notes.txt\" ] && echo True || echo False", 20],
+    ["F=\"$HOME/Desktop/Archive/2025/Q4/notes.txt\"; [ -f \"$F\" ] && tr 'A-Z' 'a-z' < \"$F\" | tr -s ' ' | grep -q 'quarterly archive' && echo True || echo False", 25]
+  ]
+}

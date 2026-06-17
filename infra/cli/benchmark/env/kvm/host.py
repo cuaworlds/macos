@@ -105,12 +105,21 @@ class Host:
         return qbase_dir
 
     def make_overlay_clone(self, dst: str) -> None:
-        """Create a per-guest clone as a thin qcow2 overlay over the shared base.
+        """Create a per-guest clone as a thin qcow2 overlay over the top immutable layer.
 
         Copies only the small companion files (base.dmg / firmware / NVRAM) and a
         KB-sized overlay whose backing file is the shared base (mounted read-only at
         /base inside the container at boot). Identity files are omitted so dockur
         regenerates a unique MAC/serial per guest.
+
+        Bare base (no +apps layer): the instance overlay backs onto /base/data.qcow2 —
+        chain is instance -> os-base.
+
+        With a +apps layer (RFC 0002 §7.1 L1): we mount BOTH the shared base at /base
+        (so the +apps layer's own backing_file=/base/data.qcow2 resolves) AND the
+        frozen +apps layer at /apps, and parent the instance overlay onto
+        /apps/data.qcow2 — chain is instance -> +apps -> os-base. This is the literal
+        2-deep recipe documented at the tail of freeze-layer.sh.
         """
         cfg = self.cfg
         ver = cfg.macos_version
@@ -120,12 +129,24 @@ class Host:
         companions = " ".join(
             shlex.quote(f"{raw}/{f}") for f in ("base.dmg", "macos.rom", "macos.vars")
         )
+        if cfg.has_apps_layer:
+            apps_dir = f"{cfg.apps_layer_dir}/{ver}"
+            # Parent the instance overlay on /apps; mount /base too so the apps layer's
+            # own backing_file=/base/data.qcow2 resolves when qemu-img validates the chain.
+            mounts = (
+                f"-v {shlex.quote(qbase_dir)}:/base:ro "
+                f"-v {shlex.quote(apps_dir)}:/apps:ro "
+                f"-v {shlex.quote(dstv)}:/out"
+            )
+            backing = "/apps/data.qcow2"
+        else:
+            mounts = f"-v {shlex.quote(qbase_dir)}:/base:ro -v {shlex.quote(dstv)}:/out"
+            backing = "/base/data.qcow2"
         script = (
             f"rm -rf {shlex.quote(dst)} && mkdir -p {shlex.quote(dstv)} && "
             f"cp -a {companions} {shlex.quote(dstv)}/ && "
-            f"docker run --rm --entrypoint qemu-img "
-            f"-v {shlex.quote(qbase_dir)}:/base:ro -v {shlex.quote(dstv)}:/out "
-            f"{shlex.quote(cfg.image)} create -f qcow2 -F qcow2 -b /base/data.qcow2 /out/data.qcow2"
+            f"docker run --rm --entrypoint qemu-img {mounts} "
+            f"{shlex.quote(cfg.image)} create -f qcow2 -F qcow2 -b {backing} /out/data.qcow2"
         )
         self.run(script, timeout=120)
 
@@ -147,6 +168,13 @@ class Host:
         if cfg.disk_mode == "overlay":
             qbase_dir = f"{cfg.qcow2_base_dir}/{cfg.macos_version}"
             overlay = f"-v {shlex.quote(qbase_dir)}:/base:ro -e DISK_FMT=qcow2 "
+            # With a +apps layer the instance overlay's backing_file=/apps/data.qcow2
+            # (and that layer's own backing_file=/base/data.qcow2) must both resolve
+            # inside the boot container — so mount the frozen +apps layer read-only at
+            # /apps as well. Chain at runtime: instance -> /apps -> /base.
+            if cfg.has_apps_layer:
+                apps_dir = f"{cfg.apps_layer_dir}/{cfg.macos_version}"
+                overlay += f"-v {shlex.quote(apps_dir)}:/apps:ro "
         argv = (
             f"run -d --name {shlex.quote(name)} "
             f"--device /dev/kvm --device /dev/net/tun --cap-add NET_ADMIN "

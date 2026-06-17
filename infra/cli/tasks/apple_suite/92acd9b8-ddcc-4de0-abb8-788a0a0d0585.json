@@ -1,0 +1,27 @@
+{
+  "id": "92acd9b8-ddcc-4de0-abb8-788a0a0d0585",
+  "snapshot": {
+    "en": "snapshot_used_en"
+  },
+  "force_snapshot_recovery": true,
+  "task": {
+    "en": "Open Calendar and create a new ALL-DAY event titled exactly `Flight to Tokyo` on Friday, August 21, 2026. Make sure the `All-day` option is turned on. Put it on any calendar. Do not create any other events."
+  },
+  "pre_command": "for A in '/System/Applications/Utilities/Terminal.app' '/System/Applications/Utilities/Script Editor.app' '/Applications/Utilities/Script Editor.app' '/System/Applications/Automator.app' '/System/Applications/Shortcuts.app' '/Applications/iTerm.app'; do [ -e \"$A/Contents/MacOS\" ] && sudo /bin/chmod 000 \"$A/Contents/MacOS\" 2>/dev/null; done; DB=\"$HOME/Library/Calendars/Calendar.sqlitedb\"; killall Calendar 2>/dev/null; sleep 2; for TRG in $(sqlite3 \"$DB\" \"SELECT name FROM sqlite_master WHERE type='trigger' AND tbl_name='CalendarItem';\" 2>/dev/null); do sqlite3 \"$DB\" \"DROP TRIGGER IF EXISTS \\\"$TRG\\\";\" 2>/dev/null; done; sqlite3 \"$DB\" \"DELETE FROM CalendarItem WHERE summary='Flight to Tokyo';\" 2>/dev/null; sqlite3 \"$DB\" \"PRAGMA wal_checkpoint(TRUNCATE);\" 2>/dev/null; open -gj -a Calendar 2>/dev/null; sleep 5",
+  "before_action_delay_seconds": 10,
+  "before_grading_delay_seconds": 30,
+  "grading_command": [
+    [
+      "DB=\"$HOME/Library/Calendars/Calendar.sqlitedb\"; N=$(sqlite3 \"$DB\" \"SELECT count(*) FROM CalendarItem ci JOIN Calendar c ON c.ROWID=ci.calendar_id JOIN Store s ON s.ROWID=c.store_id WHERE s.type=0 AND ci.summary='Flight to Tokyo';\" 2>/dev/null); [ \"$N\" -ge 1 ] 2>/dev/null && echo True || echo False",
+      35
+    ],
+    [
+      "DB=\"$HOME/Library/Calendars/Calendar.sqlitedb\"; A=$(sqlite3 \"$DB\" \"SELECT ci.all_day FROM CalendarItem ci JOIN Calendar c ON c.ROWID=ci.calendar_id JOIN Store s ON s.ROWID=c.store_id WHERE s.type=0 AND ci.summary='Flight to Tokyo' ORDER BY ci.start_date DESC LIMIT 1;\" 2>/dev/null); [ \"$A\" = \"1\" ] && echo True || echo False",
+      35
+    ],
+    [
+      "DB=\"$HOME/Library/Calendars/Calendar.sqlitedb\"; U=$(sqlite3 \"$DB\" \"SELECT date(ci.start_date+978307200,'unixepoch') FROM CalendarItem ci JOIN Calendar c ON c.ROWID=ci.calendar_id JOIN Store s ON s.ROWID=c.store_id WHERE s.type=0 AND ci.summary='Flight to Tokyo' ORDER BY ci.start_date DESC LIMIT 1;\" 2>/dev/null); L=$(sqlite3 \"$DB\" \"SELECT date(ci.start_date+978307200,'unixepoch','localtime') FROM CalendarItem ci JOIN Calendar c ON c.ROWID=ci.calendar_id JOIN Store s ON s.ROWID=c.store_id WHERE s.type=0 AND ci.summary='Flight to Tokyo' ORDER BY ci.start_date DESC LIMIT 1;\" 2>/dev/null); { [ \"$U\" = \"2026-08-21\" ] || [ \"$L\" = \"2026-08-21\" ]; } && echo True || echo False",
+      30
+    ]
+  ]
+}

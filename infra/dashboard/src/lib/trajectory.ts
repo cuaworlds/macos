@@ -43,6 +43,10 @@ export type TaskResult = {
   sandbox_id?: string
   error?: string | null
   grade_log?: unknown
+  // Multi-trial (pass@k) fields, present when a run was launched with --trials > 1.
+  base_task_id?: string
+  trial?: number
+  passed?: boolean
 }
 
 export type RunInfo = {
@@ -157,6 +161,80 @@ export function flattenFrames(steps: StepRecord[]): Frame[] {
 export function screenshotUrl(runId: string, taskId: string, file: string): string {
   if (!file) return ''
   return `/outputs/runs/${encodeURIComponent(runId)}/${encodeURIComponent(taskId)}/context/${file}`
+}
+
+/** Strip a trailing `__tNN` trial suffix to recover the base task id. */
+export function baseTaskId(id: string): string {
+  return id.replace(/__t\d+$/, '')
+}
+
+/** A passing trial reaches the run's pass threshold (default: full credit). */
+export function trialPassed(t: TaskResult): boolean {
+  if (typeof t.passed === 'boolean') return t.passed
+  if (!t.max_score || t.score === undefined || t.score === null) return false
+  return t.score / t.max_score >= 0.99
+}
+
+/** Tone of a single trial's score, for chip coloring. */
+export function scoreTone(score?: number, max?: number): 'pass' | 'partial' | 'zero' {
+  if (!max || score === undefined || score === null) return 'zero'
+  const r = score / max
+  if (r >= 0.99) return 'pass'
+  if (r > 0) return 'partial'
+  return 'zero'
+}
+
+export type TaskGroup = {
+  baseId: string
+  category?: string
+  trials: TaskResult[] // ordered by trial index
+  nTrials: number
+  passes: number
+  passRate: number
+  meanScore: number
+  meanSteps: number
+  maxScore: number
+}
+
+/** Difficulty band from pass count: the 1–2/5 "target band" we mine for. */
+export function bandOf(
+  passes: number,
+  nTrials: number,
+): { label: string; cls: string } | null {
+  if (nTrials < 2) return null
+  if (passes === 0) return { label: 'hard', cls: 'band-hard' }
+  if (passes >= Math.ceil(nTrials * 0.6)) return { label: 'easy', cls: 'band-easy' }
+  return { label: 'band', cls: 'band-target' }
+}
+
+/** Group flat per-trial rows by base task; single-trial runs yield 1-trial groups. */
+export function groupTasks(results: TaskResult[]): TaskGroup[] {
+  const by = new Map<string, TaskResult[]>()
+  for (const r of results) {
+    const id = r.base_task_id ?? baseTaskId(r.task_id)
+    const arr = by.get(id)
+    if (arr) arr.push(r)
+    else by.set(id, [r])
+  }
+  const groups: TaskGroup[] = []
+  for (const [baseId, trials] of by) {
+    trials.sort((a, b) => (a.trial ?? 0) - (b.trial ?? 0))
+    const passes = trials.filter(trialPassed).length
+    const scores = trials.map((t) => t.score ?? 0)
+    const steps = trials.map((t) => t.n_steps ?? 0)
+    groups.push({
+      baseId,
+      category: trials[0]?.category,
+      trials,
+      nTrials: trials.length,
+      passes,
+      passRate: trials.length ? passes / trials.length : 0,
+      meanScore: scores.reduce((a, b) => a + b, 0) / (scores.length || 1),
+      meanSteps: steps.reduce((a, b) => a + b, 0) / (steps.length || 1),
+      maxScore: trials.find((t) => t.max_score)?.max_score ?? 100,
+    })
+  }
+  return groups
 }
 
 export function statusPill(status?: string): { label: string; cls: string } {

@@ -1,0 +1,14 @@
+{
+  "id": "22afcaf9-cadf-40da-9e03-4279728d4a73",
+  "snapshot": {"en": "snapshot_used_en"},
+  "force_snapshot_recovery": true,
+  "task": {"en": "On the Desktop there is an image file named `logo.png`. Open it in the Preview app and export it as a JPEG image. Save the exported file to the Desktop with the name `logo.jpg`. (Use Preview's File menu — Export… — and choose JPEG as the format.) Leave the original `logo.png` in place."},
+  "pre_command": "DESK=\"$HOME/Desktop\"; mkdir -p \"$DESK\"; rm -f \"$DESK/logo.jpg\" \"$DESK/logo.jpeg\"; SRC=\"\"; for C in '/System/Library/CoreServices/DefaultDesktop.heic' '/System/Library/CoreServices/Finder.app/Contents/Resources/Finder.icns' '/System/Applications/Preview.app/Contents/Resources/AppIcon.icns' '/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/GenericApplicationIcon.icns'; do [ -e \"$C\" ] && { SRC=\"$C\"; break; }; done; [ -n \"$SRC\" ] && sips -s format png -z 512 512 \"$SRC\" --out \"$DESK/logo.png\" >/dev/null 2>&1",
+  "before_action_delay_seconds": 10,
+  "before_grading_delay_seconds": 30,
+  "grading_command": [
+    ["OUT=\"$HOME/Desktop/logo.jpg\"; [ -f \"$OUT\" ] && echo True || echo False", 40],
+    ["OUT=\"$HOME/Desktop/logo.jpg\"; [ -f \"$OUT\" ] || { echo False; exit 0; }; F=$(sips -g format \"$OUT\" 2>/dev/null | awk '/format:/{print $2}'); { [ \"$F\" = \"jpeg\" ] || [ \"$F\" = \"jpg\" ]; } && echo True || echo False", 40],
+    ["SRC=\"$HOME/Desktop/logo.png\"; [ -f \"$SRC\" ] && echo True || echo False", 20]
+  ]
+}
