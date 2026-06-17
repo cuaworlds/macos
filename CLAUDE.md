@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Repo conventions for Claude Code working in CUA World (the macOS benchmark).
+Repo conventions for Claude Code working in CUA Worlds (the macOS benchmark).
 
 ## Layout
 

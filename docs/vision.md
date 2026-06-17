@@ -1,4 +1,4 @@
-# CUA World — Vision
+# CUA Worlds — Vision
 
 ## Mission
 
@@ -15,7 +15,7 @@ researcher or lab can build on, contribute to, and trust.
 Computer-use agents are improving fast, but progress is bottlenecked by **evaluation**.
 Good benchmarks for desktop agents are scarce, hard to reproduce, and easy to overfit. The
 hard part isn't running an agent — it's defining tasks that are *meaningfully difficult* and
-verifiers that are *correct and reproducible*. That's the work CUA World focuses on:
+verifiers that are *correct and reproducible*. That's the work CUA Worlds focuses on:
 
 - **Real environments, not mocks.** Tasks run on actual operating systems with their real
   apps and data stores.

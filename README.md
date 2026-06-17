@@ -1,6 +1,6 @@
-# CUA World — macOS
+# CUA Worlds — macOS
 
-**CUA World** is an open-source research effort building high-quality benchmarks for
+**CUA Worlds** is an open-source research effort building high-quality benchmarks for
 **computer-use agents (CUA)** — agents that see a screen and drive a real computer with
 mouse and keyboard. We're starting with **macOS** and the apps that ship with it.
 
@@ -63,7 +63,7 @@ If you forgot `--recurse-submodules` at clone time: `just sync`.
 
 ## Contributing
 
-CUA World is meant to be built in the open. The most valuable contribution right now is
+CUA Worlds is meant to be built in the open. The most valuable contribution right now is
 **new tasks with solid verifiers**. A task is a JSON file under `infra/cli/tasks/<category>/`
 with an instruction, a `pre_command` to set up clean state, and a `grading_command` list of
 `[shell-check, weight]` checkpoints that grade the result over SSH. Run `uv run mw tasks show
