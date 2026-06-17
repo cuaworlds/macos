@@ -1,6 +1,6 @@
 # E2 — author once, materialize twice (KVM leg)
 
-**Lock:** KVM-BOX (`ssh jjmachan@100.118.89.35`, NixOS, dockur/macOS, x86_64). **Date:** 2026-06-15/16.
+**Lock:** KVM-BOX (`ssh user@kvm-host`, NixOS, dockur/macOS, x86_64). **Date:** 2026-06-15/16.
 **Interop link #2.** Goal: prove ONE declarative install recipe (`apps.recipe.sh`) produces a
 valid, distributable `+apps` layer — and measure the **authoring-parity tax** (the FORK RATE)
 honestly by escalating from a trivial CLI tool (jq, W2's parity case) to a real GUI `.app` (VLC).
@@ -50,9 +50,9 @@ The recipe is **the same bytes** both legs run. The KVM freeze (`freeze-layer.sh
 
 ## 3. The KVM +apps layer (deliverable artifact, kept on box)
 
-- **Path:** `~/workspace/vibrantlabs/macos-world/layers/00944de70ca6/14/data.qcow2`
+- **Path:** `~/cua-world/layers/00944de70ca6/14/data.qcow2`
 - **Digest:** `sha256:00944de70ca6033dd6a09684d81cd053c7f4e7e31a4bd9bbe3698a3a0efdcf51`
-- **Tag:** `~/workspace/vibrantlabs/macos-world/layers/by-name/jq-vlc-1 -> 00944de70ca6`
+- **Tag:** `~/cua-world/layers/by-name/jq-vlc-1 -> 00944de70ca6`
 - **Disk size:** 4.76 GiB (jq + VLC + Homebrew + CLT). `backing_file = /base/data.qcow2` (header-rebased).
 - **layer.json:** `role=apps, os=macos, arch=x86_64, format=qcow2, macos_version=14`,
   `parent=sha256:89ed5870…` (the os-base digest), `built=2026-06-16T03:07:02Z`.

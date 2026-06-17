@@ -104,8 +104,8 @@ no longer load-bearing.
 ## 3. Get the harness
 
 ```bash
-git clone --recurse-submodules git@github.com:vibrantlabsai/macos-world.git
-cd macos-world
+git clone --recurse-submodules git@github.com:cuaworlds/macos.git
+cd macos
 
 # install uv if you don't have it: https://docs.astral.sh/uv/
 uv sync                                  # installs the mw CLI + deps
@@ -129,7 +129,7 @@ downloading the prebuilt bundle from object storage:
 # 1. Download the bundle (~11 GB) via the presigned URL.
 #    Ask the maintainer (or check the project's internal channel) for a fresh URL —
 #    the one below is a sigv4 presigned URL with a 7-day expiry; regenerable any time.
-curl -L -o /tmp/kvm-base-bundle.tar.zst "https://vibrantlabsai-macos-world.s3.amazonaws.com/kvm-base-bundle.tar.zst?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASRDO234M3LUNBBXU%2F20260601%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260601T203103Z&X-Amz-Expires=604800&X-Amz-SignedHeaders=host&X-Amz-Signature=5fb5f3bef38329e1190ab81c4b635b5386bb941f358d6449c79d163660f343e7"
+curl -L -o /tmp/kvm-base-bundle.tar.zst "<PRESIGNED_URL>"   # ask a maintainer for a fresh presigned URL
 
 # 2. (Recommended) verify integrity before extracting:
 echo "ab9aa076dc3777ed3f95a81bbd917d93164aae5027bd567d83a90684c449ee06  /tmp/kvm-base-bundle.tar.zst" | sha256sum -c
@@ -146,16 +146,16 @@ bash infra/kvm/scripts/import-base-bundle.sh /tmp/kvm-base-bundle.tar.zst
 That's it — skip to §5.
 
 > **Security note.** The bundle contains macOS (EULA caveat in §0) and a *throwaway
-> eval-VM SSH key + the guest login password* (`haime`). The presigned URL is
+> eval-VM SSH key + the guest login password* (ask a maintainer). The presigned URL is
 > sensitive in transit; don't paste it in public channels. Keep guest ports
 > internal (Tailscale / private network).
 
 #### Regenerating the URL when it expires
 
-Anyone with AWS access to the `vibrantlabsai-macos-world` bucket can regenerate:
+Anyone with AWS access to the `your-kvm-base-bucket` bucket can regenerate:
 ```bash
 aws s3 presign \
-  s3://vibrantlabsai-macos-world/kvm-base-bundle.tar.zst \
+  s3://your-kvm-base-bucket/kvm-base-bundle.tar.zst \
   --expires-in 604800        # 7 days, the sigv4 max
 ```
 

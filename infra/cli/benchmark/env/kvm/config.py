@@ -43,7 +43,7 @@ class KvmConfig:
 
     fleet_size: int = 4
     host: str = "localhost"
-    ssh_login: str = "jjmachan"  # the *host* login (for remote docker control)
+    ssh_login: str = "user"  # the *host* login (for remote docker control)
     base_volume: Path = field(default_factory=_default_base_volume)
     volumes_dir: Path | None = None  # defaults to base_volume.parent
     # How per-guest disks are made from the base:

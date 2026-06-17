@@ -1,6 +1,6 @@
 # infra/cli — `mw`
 
-Click-based CLI for the macos-world benchmark harness. Installed as the `mw` script when the workspace is synced.
+Click-based CLI for the CUA World macOS benchmark harness. Installed as the `mw` script when the workspace is synced.
 
 ## Quickstart
 

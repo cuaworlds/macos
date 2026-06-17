@@ -1,6 +1,6 @@
 # W0a — savevm/loadvm fast-reset probe
 
-**Date:** 2026-06-12 · **Box:** `jjmachan@100.118.89.35` (NixOS, Intel i7-1260P, 31 GiB RAM, 708 GiB free) · **Guest:** dockur/macos VERSION=14 (macOS 14.8.7), RAM_SIZE=4G, 4 vCPU, qcow2 overlay over shared base.
+**Date:** 2026-06-12 · **Box:** `user@kvm-host` (NixOS, Intel i7-1260P, 31 GiB RAM, 708 GiB free) · **Guest:** dockur/macos VERSION=14 (macOS 14.8.7), RAM_SIZE=4G, 4 vCPU, qcow2 overlay over shared base.
 
 ## VERDICT
 

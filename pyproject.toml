@@ -1,7 +1,7 @@
 [project]
 name = "macos-world"
 version = "0.1.0"
-description = "Internal benchmarking platform built on top of the MacOSWorld datasets."
+description = "CUA World — open-source macOS benchmark for computer-use agents."
 requires-python = ">=3.12"
 
 [tool.uv.workspace]

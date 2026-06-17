@@ -1,7 +1,7 @@
 # Spike: macOS-on-Linux KVM concurrency ceiling
 
 **Date:** 2026-05-28
-**Box:** `jjmachan@100.118.89.35` (NixOS laptop, Intel i7-1260P, 31 GiB RAM, NVMe)
+**Box:** `user@kvm-host` (NixOS laptop, Intel i7-1260P, 31 GiB RAM, NVMe)
 **Substrate:** `dockurr/macos:2.30` (QEMU + KVM + OpenCore wrapped in Docker)
 **Guest OS:** macOS Sonoma 14.8.7
 
@@ -42,7 +42,7 @@ RAM      31 GiB total, 27 GiB available at spike start
 Disk     904 GB NVMe (ext4), 769 GB free at spike start
 Kernel   Linux 6.12.76 (NixOS 25.11)
 KVM      /dev/kvm present, world-writable; user in `kvm` and `docker` groups
-Network  Tailscale, reachable as 100.118.89.35
+Network  Tailscale, reachable as kvm-host
 Docker   28.5.2 (Moby), daemon already active
 Notes    /etc/nixos/configuration.nix is read-only; sudo is NOPASSWD
 ```

@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Repo conventions for Claude Code working in macos-world.
+Repo conventions for Claude Code working in CUA World (the macOS benchmark).
 
 ## Layout
 
@@ -8,7 +8,7 @@ Repo conventions for Claude Code working in macos-world.
 - `infra/cli/` — Python uv-workspace member named `macosworld-usecomputer`. The benchmark harness. Entry: `mw` (Click umbrella) — `mw bench`, `mw tasks`, `mw sandbox`.
 - `infra/dashboard/` — Vite + React + TS frontend. Reads from `<repo-root>/outputs/`.
 - `outputs/` — run results. Track `.gitkeep` only; contents are gitignored.
-- `docs/` — internal documentation.
+- `docs/` — the vision, RFCs, experiment notes, and runbooks.
 
 ## Tooling
 

@@ -1,1 +1,1 @@
-"""macos-world CLI."""
+"""CUA World macOS benchmark CLI."""
