@@ -1,9 +1,16 @@
 default:
     @just --list
 
-# Sync submodules
+# Sync git submodules: gym-anything (agent-env toolkit) + MacOSWorld datasets
 sync:
     git submodule update --init --recursive
+    @echo "✓ submodules ready: gym-anything/, macosworld-aws/, macosworld-vmware/"
+
+# Pull the latest gym-anything (collaborator repo) and stage the new pin to commit
+gym-update:
+    git submodule update --remote --init gym-anything
+    @git -C gym-anything log --oneline -1
+    @echo "↑ gym-anything moved to the commit above; review & commit: git add gym-anything && git commit -m 'chore: bump gym-anything pin'"
 
 # Run the benchmark CLI (model defaults to claude-haiku-4-5, tasks to smoke)
 bench model="claude-haiku-4-5" tasks="smoke":

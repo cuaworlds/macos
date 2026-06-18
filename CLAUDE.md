@@ -28,3 +28,4 @@ Benchmark runs write to `<repo-root>/outputs/runs/<run-id>/`. The dashboard read
 - `git clone --recurse-submodules <url>` to clone properly.
 - `just sync` (or `git submodule update --init --recursive`) to pick up submodules in an existing checkout.
 - Bumping a submodule is a deliberate action: `cd <submodule> && git fetch && git checkout <ref> && cd .. && git add <submodule> && git commit`. Don't do this casually.
+- For `gym-anything` specifically, `just gym-update` does the bump (pulls upstream `main`, stages the new pin) — then review and commit to stay in sync with the collaborator.

@@ -48,7 +48,7 @@ uv run mw tasks list                # browse the task catalog
 just dashboard
 ```
 
-If you forgot `--recurse-submodules` at clone time: `just sync`.
+The clone pulls the submodules too, including [`gym-anything/`](https://github.com/cmu-l3/gym-anything) (a collaborator's agent-environment toolkit we track and build on). If you forgot `--recurse-submodules` at clone time, run `just sync`. To pull the latest `gym-anything` and stage the new pin, run `just gym-update`.
 
 ## Layout
 
