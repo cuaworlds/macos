@@ -96,7 +96,7 @@ export default function TrajectoryView() {
   return (
     <div className="page">
       <div className="crumbs">
-        <Link to="/">macos-world</Link>
+        <Link to="/">CUA Worlds</Link>
         <span className="sep">/</span>
         <Link to={`/r/${encodeURIComponent(runId)}`}>{runId}</Link>
         <span className="sep">/</span>

@@ -24,15 +24,15 @@ rsync_excludes = [
 forward_env = ["YUTORI_API_KEY", "ANTHROPIC_API_KEY", "MACOSWORLD_MAX_STEPS"]
 
 [servers.kvmbox]
-host = "jjmachan@100.118.89.35"
-# Umbrella for all macos-world host stuff: rsync snapshots land in runs/<session>/,
+host = "user@your-kvm-host"
+# Umbrella for all host-side state: rsync snapshots land in runs/<session>/,
 # alongside the KVM base/, _base_qcow2/, and ssh/ (see env below).
-remote_dir = "~/workspace/vibrantlabs/macos-world"
+remote_dir = "~/cua-worlds"
 shell_prefix = ""  # uv is on the login PATH; no `nix develop` wrapper needed
 env_file = ""      # secrets come via forward_env, not a remote .env
 
 # Point KvmConfig at the consolidated base volume + guest key under the umbrella
 # (KvmConfig reads these env vars; _base_qcow2 auto-derives as base's sibling).
 [servers.kvmbox.env]
-MACOSWORLD_KVM_BASE_VOLUME = "/home/jjmachan/workspace/vibrantlabs/macos-world/base"
-MACOSWORLD_KVM_SSH_KEY = "/home/jjmachan/workspace/vibrantlabs/macos-world/ssh/id_kvm"
+MACOSWORLD_KVM_BASE_VOLUME = "~/cua-worlds/base"
+MACOSWORLD_KVM_SSH_KEY = "~/cua-worlds/ssh/id_kvm"

@@ -1,3 +1,5 @@
 # docs
 
-Internal documentation for the macos-world project — runbooks, decision logs, dataset notes, and anything else worth keeping alongside the code.
+Documentation for CUA Worlds (macOS) — start with [`vision.md`](vision.md) for the mission and
+roadmap, then `rfcs/` for design decisions, `experiments/` for the substrate evidence, and
+`runbooks/` for operational guides.

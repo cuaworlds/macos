@@ -88,7 +88,7 @@ export default function RunDetail() {
   return (
     <div className="page">
       <div className="crumbs">
-        <Link to="/">macos-world</Link>
+        <Link to="/">CUA Worlds</Link>
         <span className="sep">/</span>
         <span>{runId}</span>
       </div>

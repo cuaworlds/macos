@@ -19,7 +19,7 @@ export default function RunsList() {
   return (
     <div className="page">
       <div className="crumbs">
-        <span>macos-world</span>
+        <span>CUA Worlds</span>
         <span className="sep">/</span>
         <span>runs</span>
       </div>

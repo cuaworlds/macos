@@ -6,7 +6,7 @@ packs the gold base volume (`volumes/base`) **and** its matching SSH keypair
 
 ## Distribution: AWS S3 (the supported path)
 
-The bundle is hosted at `s3://vibrantlabsai-macos-world/kvm-base-bundle.tar.zst`
+The bundle is hosted at `s3://your-kvm-base-bucket/kvm-base-bundle.tar.zst`
 (private bucket; access via a regenerable sigv4 presigned URL — see
 [`docs/runbooks/kvm-server-setup.md` §4](../../../docs/runbooks/kvm-server-setup.md)
 for the colleague-facing download flow).
@@ -18,9 +18,9 @@ bash infra/kvm/scripts/export-base-bundle.sh /tmp/kvm-base-bundle.tar.zst
 sha256sum /tmp/kvm-base-bundle.tar.zst            # record for the runbook
 # upload (from any machine with AWS creds to the bucket):
 aws s3 cp /tmp/kvm-base-bundle.tar.zst \
-  s3://vibrantlabsai-macos-world/kvm-base-bundle.tar.zst
+  s3://your-kvm-base-bucket/kvm-base-bundle.tar.zst
 # then regenerate the presigned URL and update the runbook's <PRESIGNED_URL>:
-aws s3 presign s3://vibrantlabsai-macos-world/kvm-base-bundle.tar.zst --expires-in 604800
+aws s3 presign s3://your-kvm-base-bucket/kvm-base-bundle.tar.zst --expires-in 604800
 ```
 
 ### Consume on a fresh box

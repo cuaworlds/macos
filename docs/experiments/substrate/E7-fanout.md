@@ -1,6 +1,6 @@
 # E7 — interop link #7: training fan-out at volume (KVM) + the KVM half of link #5 (determinism)
 
-**Locks held:** KVM-BOX (`ssh jjmachan@100.118.89.35`, NixOS, 16 vCPU / **31 GiB RAM** /
+**Locks held:** KVM-BOX (`ssh user@kvm-host`, NixOS, 16 vCPU / **31 GiB RAM** /
 34 GiB swap / 658 GiB free disk). **Date:** 2026-06-16. **Builds on:** W0a (reset =
 overlay-discard), W1 (qcow2 chain boots, task 100/100), E4 (certified-portable task set +
 the SSH-seed-correct-state grading method), E2 (+apps layer freeze mechanism). Drives the

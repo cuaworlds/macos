@@ -101,9 +101,9 @@ when an env package supplies an `apps_layer_dir`.
 Built fresh against the **current** base (the round-1 layers under the old
 `~/workspace/kvm-spike/layers/` were rebased on the old kvm-spike base and were NOT used).
 
-- **Path:** `~/workspace/vibrantlabs/macos-world/layers/a22c98a5d55e/14/data.qcow2`
+- **Path:** `~/cua-worlds/layers/a22c98a5d55e/14/data.qcow2`
 - **Digest:** `sha256:a22c98a5d55e0e78c3cd25e846ae3b0edb1c0ba7a0adc6b78bf7210ad21086f1`
-- **Tag:** `~/workspace/vibrantlabs/macos-world/layers/by-name/cua-marker-1 -> a22c98a5d55e`
+- **Tag:** `~/cua-worlds/layers/by-name/cua-marker-1 -> a22c98a5d55e`
 - **Size:** 145 MiB. `backing_file = /base/data.qcow2` (header-rebased by freeze-layer.sh).
 - **Contents:** `/Users/user/.cua-apps-marker` =
   `CUA-LAYER-OK\nbuilt-by-W1-substrate-task 2026-06-12T06:09:58Z`.
@@ -195,7 +195,7 @@ resolver tests).
   removed.
 - **Kept:** the frozen `+apps` layer `layers/a22c98a5d55e` (digest in §4) + its
   `by-name/cua-marker-1` tag — a useful artifact for W3/W6/W7.
-- Base `~/workspace/vibrantlabs/macos-world/base/14/` untouched.
+- Base `~/cua-worlds/base/14/` untouched.
 - **Orphans:** two pre-existing `Exited (255)` containers from 3 weeks ago
   (`odoo-review-analytic_cost_allocation`, `fix-git__pzkdyqs-main-1`) — **not mine**,
   left as-is.

@@ -79,7 +79,7 @@ def _print_trials_summary(agg: dict) -> None:
 
 @click.group()
 def cli():
-    """macos-world benchmark CLI."""
+    """CUA Worlds — macOS benchmark CLI."""
     # Stream timestamped, per-task-tagged progress in real time (and line-buffer
     # stdout) so long/concurrent runs are debuggable and never *look* deadlocked.
     setup_logging()

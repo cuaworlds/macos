@@ -1,6 +1,6 @@
 # E4 — Cross-substrate GRADE IDENTITY (interop link #4, THE HEADLINE)
 
-**Locks held:** BOTH — KVM-BOX (`ssh jjmachan@100.118.89.35`, NixOS) + LOCAL-MAC (M4 Pro,
+**Locks held:** BOTH — KVM-BOX (`ssh user@kvm-host`, NixOS) + LOCAL-MAC (M4 Pro,
 Sequoia host, Tart). **Date:** 2026-06-15/16. **Builds on:** E3 (`VzMacOSEnv` first-class `Env`,
 `e3-base` frozen), the proven SSH/sqlite SEEDING recipes (`explorations/mining/candidate-trust.md`,
 `explorations/validation/calendar-reminders-persistence.md`), the substrate-blind grader

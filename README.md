@@ -1,48 +1,74 @@
-# macos-world
+# CUA Worlds — macOS
 
-Internal benchmarking platform built on top of the public MacOSWorld datasets.
+**CUA Worlds** is an open-source research effort building high-quality benchmarks for
+**computer-use agents (CUA)** — agents that see a screen and drive a real computer with
+mouse and keyboard. We're starting with **macOS** and the apps that ship with it.
+
+> Think *AOSP, but for computer-use datasets*: open environments, open tasks, open
+> verifiers — built in the open so researchers and labs can measure (and push) the
+> frontier of what agents can actually do on a real desktop.
+
+See [`docs/vision.md`](docs/vision.md) for the mission and roadmap.
+
+## What's here
+
+This repository holds the **macOS** benchmark: a set of native-app, personal-assistant
+tasks with **execution-based verifiers** (the agent's work is graded by inspecting real
+system state over SSH — files, app databases, settings — not by eyeballing pixels), plus
+the harness that runs agents against them and a dashboard to inspect trajectories.
+
+- **Default-apps only.** Tasks use the apps that come with macOS (Finder, Notes, Calendar,
+  Reminders, Contacts, Mail, System Settings, …) so there's nothing to install and the
+  environment is reproducible.
+- **Transparent, weighted grading.** Each task scores against independent checkpoints, so
+  partial progress is visible and every point is auditable.
+- **Portable substrate.** The same task package runs on x86 Linux/KVM and Apple-Silicon
+  Virtualization.framework and grades identically — see [RFC 0002](docs/rfcs/0002-cua-env-spec-layered-vm-images.md).
+
+**Status:** early. The first milestone is a set of *frontier-hard* macOS personal-assistant
+tasks + verifiers (see the roadmap). Contributions welcome.
+
+## Quickstart
+
+```bash
+git clone --recurse-submodules git@github.com:cuaworlds/macos.git
+cd macos
+
+# Python toolchain (uv workspace) — install uv: https://docs.astral.sh/uv/
+uv sync
+
+# Drive an agent against the task catalog
+export ANTHROPIC_API_KEY=...        # for claude-* models
+export YUTORI_API_KEY=...           # for n1.5-* models (optional)
+uv run mw bench run --model claude-haiku-4-5 --tasks smoke
+uv run mw bench list                # see all runs
+uv run mw tasks list                # browse the task catalog
+
+# Inspect runs in the dashboard
+just dashboard
+```
+
+If you forgot `--recurse-submodules` at clone time: `just sync`.
 
 ## Layout
 
 | Path | What |
 | ---- | ---- |
-| `macosworld-aws/` | submodule → [showlab/macosworld](https://github.com/showlab/macosworld) (read-only upstream) |
-| `macosworld-vmware/` | submodule → [yangpei-comp/macosworld_vmware](https://github.com/yangpei-comp/macosworld_vmware) (read-only upstream) |
-| `infra/cli/` | benchmark harness — runs eval tasks via the Use Computer API |
+| `infra/cli/` | the `mw` benchmark harness (uv workspace member) — `mw bench`, `mw tasks`, `mw sandbox` |
+| `infra/cli/tasks/` | task definitions (JSON) + their execution-based verifiers, by category |
 | `infra/dashboard/` | React + Vite + TS UI that visualizes runs from `outputs/` |
+| `docs/` | the vision, RFCs, experiment notes, and runbooks |
 | `outputs/` | run results (gitignored except for `.gitkeep`) |
-| `docs/` | internal documentation |
+| `macosworld-aws/`, `macosworld-vmware/` | submodules → upstream MacOSWorld datasets (read-only) |
 
-## Quickstart
+## Contributing
 
-```bash
-git clone --recurse-submodules <repo-url> macos-world
-cd macos-world
+CUA Worlds is meant to be built in the open. The most valuable contribution right now is
+**new tasks with solid verifiers**. A task is a JSON file under `infra/cli/tasks/<category>/`
+with an instruction, a `pre_command` to set up clean state, and a `grading_command` list of
+`[shell-check, weight]` checkpoints that grade the result over SSH. Run `uv run mw tasks show
+<task-id>` to see a real example, add yours, and `uv run pytest infra/cli` before opening a PR.
 
-# Python toolchain (uv workspace)
-uv sync
+## License
 
-# Run a smoke benchmark
-export USE_COMPUTER_API_KEY=...     # required for --backend use-computer
-export ANTHROPIC_API_KEY=...        # required for claude-* models
-export YUTORI_API_KEY=...           # required for n1.5-* models
-uv run mw bench run --model claude-haiku-4-5 --tasks smoke
-uv run mw bench run --model n1.5-latest --tasks smoke   # cross-provider
-uv run mw bench list             # see all runs
-uv run mw tasks list             # browse task catalog
-
-# View results in the dashboard
-just dashboard
-```
-
-If you forgot `--recurse-submodules` at clone time:
-
-```bash
-just sync   # or: git submodule update --init --recursive
-```
-
-## Conventions
-
-- Python is managed by `uv` as a workspace; always invoke via `uv run`.
-- Benchmark results land in `outputs/runs/<run-id>/`. Override with `MACOSWORLD_OUTPUTS_DIR`.
-- The two submodules are read-only references — don't edit their contents.
+[Apache-2.0](LICENSE).
