@@ -59,6 +59,7 @@ If you forgot `--recurse-submodules` at clone time: `just sync`.
 | `infra/dashboard/` | React + Vite + TS UI that visualizes runs from `outputs/` |
 | `docs/` | the vision, RFCs, experiment notes, and runbooks |
 | `outputs/` | run results (gitignored except for `.gitkeep`) |
+| `gym-anything/` | submodule → [cmu-l3/gym-anything](https://github.com/cmu-l3/gym-anything) — "turn any software into an agent environment" toolkit from a collaborator; tracked here so we stay in sync and coding agents can leverage it |
 | `macosworld-aws/`, `macosworld-vmware/` | submodules → upstream MacOSWorld datasets (read-only) |
 
 ## Contributing

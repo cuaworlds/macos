@@ -16,6 +16,7 @@ rsync_excludes = [
   "outputs",
   "macosworld-aws",
   "macosworld-vmware",
+  "gym-anything",
   "infra/dashboard/node_modules",
   "infra/dashboard/dist",
 ]

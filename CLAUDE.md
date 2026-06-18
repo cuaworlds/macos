@@ -5,6 +5,7 @@ Repo conventions for Claude Code working in CUA Worlds (the macOS benchmark).
 ## Layout
 
 - `macosworld-aws/`, `macosworld-vmware/` — git submodules pointing at the upstream MacOSWorld datasets. **Read-only.** Don't edit anything inside these; if you need to fork upstream, surface that as a separate task.
+- `gym-anything/` — git submodule → [cmu-l3/gym-anything](https://github.com/cmu-l3/gym-anything) ("turn any software into an agent environment"), maintained by a collaborator. Tracked as a **pinned dependency** so we stay in sync; coding agents may read and leverage it (it ships its own `AGENTS.md`/`CLAUDE.md`). Don't edit it in place — changes go upstream via the collaborator; bump the pin deliberately (see Submodules).
 - `infra/cli/` — Python uv-workspace member named `macosworld-usecomputer`. The benchmark harness. Entry: `mw` (Click umbrella) — `mw bench`, `mw tasks`, `mw sandbox`.
 - `infra/dashboard/` — Vite + React + TS frontend. Reads from `<repo-root>/outputs/`.
 - `outputs/` — run results. Track `.gitkeep` only; contents are gitignored.

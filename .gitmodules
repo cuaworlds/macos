@@ -4,3 +4,6 @@
 [submodule "macosworld-vmware"]
 	path = macosworld-vmware
 	url = https://github.com/yangpei-comp/macosworld_vmware
+[submodule "gym-anything"]
+	path = gym-anything
+	url = https://github.com/cmu-l3/gym-anything
