@@ -44,9 +44,16 @@ uv run mw bench run --model claude-haiku-4-5 --tasks smoke
 uv run mw bench list                # see all runs
 uv run mw tasks list                # browse the task catalog
 
-# Inspect runs in the dashboard
-just dashboard
+# Inspect runs in the dashboard (offline — reads local outputs/, no backend/login)
+just dashboard-local
 ```
+
+Results are recorded to the hosted CuaWorld backend when you're authenticated
+(`uv run mw auth login <user>`); without credentials, `mw bench run` runs
+**local-only** and writes to `outputs/runs/`. The dashboard reads from the
+backend by default (`just dashboard`) or from local `outputs/` in offline mode
+(`just dashboard-local`). See [`infra/cli/README.md`](infra/cli/README.md) and
+[`infra/dashboard/README.md`](infra/dashboard/README.md).
 
 The clone pulls the submodules too, including [`gym-anything/`](https://github.com/cmu-l3/gym-anything) (a collaborator's agent-environment toolkit we track and build on). If you forgot `--recurse-submodules` at clone time, run `just sync`. To pull the latest `gym-anything` and stage the new pin, run `just gym-update`.
 
@@ -56,7 +63,7 @@ The clone pulls the submodules too, including [`gym-anything/`](https://github.c
 | ---- | ---- |
 | `infra/cli/` | the `mw` benchmark harness (uv workspace member) — `mw bench`, `mw tasks`, `mw sandbox` |
 | `infra/cli/tasks/` | task definitions (JSON) + their execution-based verifiers, by category |
-| `infra/dashboard/` | React + Vite + TS UI that visualizes runs from `outputs/` |
+| `infra/dashboard/` | React + Vite + TS UI for runs/trajectories — reads the hosted backend, or local `outputs/` in offline mode; deployable to Vercel |
 | `docs/` | the vision, RFCs, experiment notes, and runbooks |
 | `outputs/` | run results (gitignored except for `.gitkeep`) |
 | `gym-anything/` | submodule → [cmu-l3/gym-anything](https://github.com/cmu-l3/gym-anything) — "turn any software into an agent environment" toolkit from a collaborator; tracked here so we stay in sync and coding agents can leverage it |

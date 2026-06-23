@@ -28,9 +28,13 @@ sandbox sandbox_id="":
 sandbox-kvm host="localhost":
     uv run mw sandbox open --backend kvm --kvm-host {{host}}
 
-# Start the dashboard dev server
+# Start the dashboard dev server (talks to the backend at VITE_API_BASE_URL)
 dashboard:
     cd infra/dashboard && npm run dev
+
+# Start the dashboard in offline mode: reads local outputs/, no backend or login
+dashboard-local:
+    cd infra/dashboard && VITE_DATA_SOURCE=local npm run dev
 
 # Install dashboard deps
 dashboard-install:

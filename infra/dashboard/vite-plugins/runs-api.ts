@@ -3,6 +3,10 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Plugin } from 'vite'
 
+// Dev-only plugin powering OFFLINE mode (VITE_DATA_SOURCE=local): serves runs,
+// task definitions, and trajectory artifacts straight from the repo's outputs/.
+// Never runs in a production build (configureServer is dev-only).
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 function resolveOutputsRoot(): string {
@@ -16,7 +20,6 @@ function resolveTasksRoot(): string {
   return path.resolve(__dirname, '..', '..', 'cli', 'tasks')
 }
 
-/** Read a task definition by id, searching across category dirs. */
 async function readTaskDef(tasksRoot: string, taskId: string) {
   let categories: import('fs').Dirent[]
   try {
@@ -107,10 +110,7 @@ async function readRunSummary(root: string, runId: string) {
       .filter((d) => d.isDirectory())
       .map(async (d) => {
         try {
-          const resultRaw = await fs.readFile(
-            path.join(runDir, d.name, 'result.json'),
-            'utf8',
-          )
+          const resultRaw = await fs.readFile(path.join(runDir, d.name, 'result.json'), 'utf8')
           return JSON.parse(resultRaw)
         } catch {
           return { task_id: d.name, status: 'unknown' }
@@ -124,6 +124,12 @@ function sendJson(res: import('http').ServerResponse, status: number, body: unkn
   res.statusCode = status
   res.setHeader('Content-Type', 'application/json')
   res.end(JSON.stringify(body))
+}
+
+const CONTENT_TYPES: Record<string, string> = {
+  '.png': 'image/png',
+  '.json': 'application/json',
+  '.jsonl': 'application/x-ndjson',
 }
 
 export function runsApi(): Plugin {
@@ -147,8 +153,7 @@ export function runsApi(): Plugin {
           if (def === null) return sendJson(res, 404, { error: 'task not found' })
           return sendJson(res, 200, def)
         } catch (err) {
-          const message = err instanceof Error ? err.message : String(err)
-          return sendJson(res, 500, { error: message })
+          return sendJson(res, 500, { error: err instanceof Error ? err.message : String(err) })
         }
       })
 
@@ -157,18 +162,31 @@ export function runsApi(): Plugin {
         try {
           const url = new URL(req.url || '/', 'http://x')
           const rest = url.pathname.replace(/^\/+|\/+$/g, '')
-          if (!rest) {
-            const runs = await listRuns(outputsRoot)
-            return sendJson(res, 200, runs)
-          }
+          if (!rest) return sendJson(res, 200, await listRuns(outputsRoot))
           const [runId, ...extra] = rest.split('/')
           if (extra.length > 0) return next()
           const summary = await readRunSummary(outputsRoot, runId)
           if (summary === null) return sendJson(res, 404, { error: 'run not found' })
           return sendJson(res, 200, summary)
         } catch (err) {
-          const message = err instanceof Error ? err.message : String(err)
-          return sendJson(res, 500, { error: message })
+          return sendJson(res, 500, { error: err instanceof Error ? err.message : String(err) })
+        }
+      })
+
+      // Static trajectory artifacts: /outputs/runs/<id>/<task>/{trajectory.jsonl,result.json,context/*}
+      server.middlewares.use('/outputs', async (req, res, next) => {
+        if (req.method !== 'GET') return next()
+        const rel = decodeURIComponent((req.url || '/').split('?')[0]).replace(/^\/+/, '')
+        // Mounted at /outputs, so req.url begins with the path after it, e.g. runs/<id>/...
+        const inner = rel.replace(/^runs\//, '')
+        const file = path.join(outputsRoot, inner)
+        if (!file.startsWith(outputsRoot)) return sendJson(res, 400, { error: 'bad path' })
+        try {
+          const buf = await fs.readFile(file)
+          res.setHeader('Content-Type', CONTENT_TYPES[path.extname(file)] ?? 'application/octet-stream')
+          res.end(buf)
+        } catch {
+          return next()
         }
       })
     },

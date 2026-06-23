@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { listRuns } from '../lib/api'
 import type { RunInfo } from '../lib/trajectory'
 
 export default function RunsList() {
@@ -7,11 +8,7 @@ export default function RunsList() {
   const [err, setErr] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/runs')
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json()
-      })
+    listRuns()
       .then(setRuns)
       .catch((e) => setErr(String(e)))
   }, [])
@@ -29,8 +26,8 @@ export default function RunsList() {
       {!err && runs === null && <div className="empty muted">Loading…</div>}
       {!err && runs && runs.length === 0 && (
         <div className="empty">
-          No runs in <code>outputs/runs/</code>. Trigger one with{' '}
-          <code>just bench claude-haiku-4-5 smoke</code>.
+          No runs yet. Trigger one with{' '}
+          <code>mw bench run --model claude-haiku-4-5 --tasks smoke</code>.
         </div>
       )}
       {!err && runs && runs.length > 0 && (

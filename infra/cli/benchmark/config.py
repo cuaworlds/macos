@@ -8,6 +8,11 @@ DISPLAY_HEIGHT = 768
 
 BASE_URL = os.getenv("USE_COMPUTER_BASE_URL", "https://api.dev.use.computer")
 
+# Hosted backend that records runs, rollouts, and tasks. The CLI pushes results
+# here (see benchmark.backend / mw.push). env > saved credentials > this default.
+DEFAULT_CUA_API_URL = "https://api.cuaworld.vibrantlabs.com/api/v1"
+CUA_API_URL = os.getenv("CUA_API_URL", DEFAULT_CUA_API_URL)
+
 MAX_STEPS = int(os.getenv("MACOSWORLD_MAX_STEPS", "150"))
 TASK_STEP_TIMEOUT_S = 120
 ONLY_N_MOST_RECENT_IMAGES = 3

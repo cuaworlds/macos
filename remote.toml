@@ -22,7 +22,7 @@ rsync_excludes = [
 ]
 # Local env vars forwarded (shlex-quoted) into the remote tmux command, so runs use
 # the invoking user's keys without baking secrets onto the host.
-forward_env = ["YUTORI_API_KEY", "ANTHROPIC_API_KEY", "MACOSWORLD_MAX_STEPS"]
+forward_env = ["YUTORI_API_KEY", "ANTHROPIC_API_KEY", "MACOSWORLD_MAX_STEPS", "CUA_API_URL", "CUA_API_KEY"]
 
 [servers.kvmbox]
 host = "user@your-kvm-host"

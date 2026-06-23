@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import Scrubber from '../components/Scrubber'
+import { getRollout, getTaskDef, getTrajectory } from '../lib/api'
 import {
   actionMarkers,
   DISPLAY_H,
   DISPLAY_W,
   flattenFrames,
-  parseJsonl,
-  screenshotUrl,
   statusPill,
   type GradeLogEntry,
   type StepRecord,
@@ -20,6 +19,7 @@ const PRELOAD_AHEAD = 5
 export default function TrajectoryView() {
   const { runId = '', taskId = '' } = useParams()
   const [steps, setSteps] = useState<StepRecord[] | null>(null)
+  const [screens, setScreens] = useState<Record<string, string>>({})
   const [result, setResult] = useState<TaskResult | null>(null)
   const [taskDef, setTaskDef] = useState<TaskDef | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -32,25 +32,37 @@ export default function TrajectoryView() {
 
   useEffect(() => {
     if (!runId || !taskId) return
-    const base = `/outputs/runs/${encodeURIComponent(runId)}/${encodeURIComponent(taskId)}`
-    fetch(`${base}/trajectory.jsonl`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`trajectory.jsonl HTTP ${r.status}`)
-        return r.text()
+    let cancelled = false
+    getTrajectory(runId, taskId)
+      .then((t) => {
+        if (cancelled) return
+        setSteps(t.steps)
+        setScreens(t.screenshots)
       })
-      .then((text) => setSteps(parseJsonl<StepRecord>(text)))
-      .catch((e) => setErr(String(e)))
+      .catch((e) => !cancelled && setErr(String(e)))
 
-    fetch(`${base}/result.json`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then(setResult)
+    getRollout(runId, taskId)
+      .then((r) => !cancelled && setResult(r))
       .catch(() => {})
-
-    fetch(`/api/taskdef/${encodeURIComponent(taskId)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then(setTaskDef)
-      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
   }, [runId, taskId])
+
+  // The task definition lives on a separate resource keyed by the rollout's task_id.
+  useEffect(() => {
+    const defId = result?.task_def_id
+    if (defId === undefined) return
+    let cancelled = false
+    getTaskDef(defId)
+      .then((d) => !cancelled && setTaskDef(d))
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [result?.task_def_id])
+
+  const shotUrl = (file: string) => (file ? (screens[file] ?? '') : '')
 
   const frames = useMemo(() => (steps ? flattenFrames(steps) : []), [steps])
   const cur = frames[frameIdx]
@@ -80,14 +92,16 @@ export default function TrajectoryView() {
   }, [steps])
 
   useEffect(() => {
-    if (!cur || !runId || !taskId) return
+    if (!cur) return
     for (let i = 1; i <= PRELOAD_AHEAD; i++) {
       const next = frames[frameIdx + i]
-      if (!next || !next.screenshot) continue
+      const url = next ? shotUrl(next.screenshot) : ''
+      if (!url) continue
       const img = new Image()
-      img.src = screenshotUrl(runId, taskId, next.screenshot)
+      img.src = url
     }
-  }, [frameIdx, frames, cur, runId, taskId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frameIdx, frames, cur, screens])
 
   const pill = statusPill(result?.status)
   const scoreCls =
@@ -151,10 +165,7 @@ export default function TrajectoryView() {
             <div className="stage" ref={stageRef}>
               {cur.screenshot ? (
                 <div className="shot-wrap">
-                  <img
-                    src={screenshotUrl(runId, taskId, cur.screenshot)}
-                    alt={`step ${cur.step}`}
-                  />
+                  <img src={shotUrl(cur.screenshot)} alt={`step ${cur.step}`} />
                   <div className="shot-overlay">
                     {dragLine && (
                       <svg

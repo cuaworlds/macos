@@ -209,8 +209,8 @@ Expected: 4 guests boot in parallel, the 10 smoke tasks run concurrently, result
 land in `outputs/runs/<run-id>/`. Cap steps while testing with
 `MACOSWORLD_MAX_STEPS=40` to keep cost/time down.
 
-**See the traces:** `cd infra/dashboard && npm install && npm run dev` → open the
-printed URL → pick the run.
+**See the traces:** `just dashboard-install && just dashboard-local` (offline mode —
+reads local `outputs/`, no backend/login) → open the printed URL → pick the run.
 
 ---
 
