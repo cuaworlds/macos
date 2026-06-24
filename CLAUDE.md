@@ -7,7 +7,7 @@ Repo conventions for Claude Code working in CUA Worlds (the macOS benchmark).
 - `macosworld-aws/`, `macosworld-vmware/` — git submodules pointing at the upstream MacOSWorld datasets. **Read-only.** Don't edit anything inside these; if you need to fork upstream, surface that as a separate task.
 - `gym-anything/` — git submodule → [cmu-l3/gym-anything](https://github.com/cmu-l3/gym-anything) ("turn any software into an agent environment"), maintained by a collaborator. Tracked as a **pinned dependency** so we stay in sync; coding agents may read and leverage it (it ships its own `AGENTS.md`/`CLAUDE.md`). Don't edit it in place — changes go upstream via the collaborator; bump the pin deliberately (see Submodules).
 - `infra/cli/` — Python uv-workspace member named `macosworld-usecomputer`. The benchmark harness. Entry: `mw` (Click umbrella) — `mw bench`, `mw tasks`, `mw sandbox`.
-- `infra/dashboard/` — Vite + React + TS frontend. Reads from `<repo-root>/outputs/`.
+- `infra/dashboard/` — Vite + React + TS frontend. Reads runs/rollouts from the hosted backend API (`VITE_API_BASE_URL`) with JWT login; deployable to Vercel. Has a dev-only offline mode (`VITE_DATA_SOURCE=local`, `just dashboard-local`) that reads local `outputs/` with no backend/auth.
 - `outputs/` — run results. Track `.gitkeep` only; contents are gitignored.
 - `docs/` — the vision, RFCs, experiment notes, and runbooks.
 
@@ -21,7 +21,7 @@ Repo conventions for Claude Code working in CUA Worlds (the macOS benchmark).
 
 ## Outputs contract
 
-Benchmark runs write to `<repo-root>/outputs/runs/<run-id>/`. The dashboard reads from the same place. Override the location with `MACOSWORLD_OUTPUTS_DIR`. Don't break this contract without updating both sides.
+Benchmark runs write to `<repo-root>/outputs/runs/<run-id>/` as upload staging (override the location with `MACOSWORLD_OUTPUTS_DIR`). The CLI then pushes runs/rollouts/artifacts to the hosted backend (`mw` auth + push; artifacts go to S3) and removes the local dir on success. The dashboard reads from the backend API, not from `outputs/`. Don't break the on-disk run layout without updating the CLI's push mapping (`mw/push.py`).
 
 ## Submodules
 

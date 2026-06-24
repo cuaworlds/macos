@@ -535,3 +535,78 @@ pre {
   max-height: 110px;
   overflow: auto;
 }
+
+/* topbar */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.topbar .brand {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--accent);
+}
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.link-btn:hover {
+  background: none;
+  color: var(--accent);
+}
+
+/* login */
+.login-page {
+  max-width: 360px;
+  margin-top: 12vh;
+}
+.login-card {
+  display: flex;
+  flex-direction: column;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.field input {
+  font: inherit;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+.field input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.btn {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+  padding: 8px 10px;
+}
+.login-err {
+  color: var(--red);
+  background: var(--red-bg);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}

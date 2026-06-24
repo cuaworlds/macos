@@ -47,6 +47,9 @@ export type TaskResult = {
   base_task_id?: string
   trial?: number
   passed?: boolean
+  // Id used to fetch the task definition: the backend Task id, or the local
+  // base task id in offline mode.
+  task_def_id?: number | string
 }
 
 export type RunInfo = {
@@ -156,11 +159,6 @@ export function flattenFrames(steps: StepRecord[]): Frame[] {
     }
   }
   return frames
-}
-
-export function screenshotUrl(runId: string, taskId: string, file: string): string {
-  if (!file) return ''
-  return `/outputs/runs/${encodeURIComponent(runId)}/${encodeURIComponent(taskId)}/context/${file}`
 }
 
 /** Strip a trailing `__tNN` trial suffix to recover the base task id. */

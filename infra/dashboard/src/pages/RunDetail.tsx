@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { getTaskDef, listRollouts } from '../lib/api'
 import {
   bandOf,
   baseTaskId,
@@ -21,11 +22,7 @@ export default function RunDetail() {
 
   useEffect(() => {
     if (!runId) return
-    fetch(`/api/runs/${encodeURIComponent(runId)}`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json()
-      })
+    listRollouts(runId)
       .then(setTasks)
       .catch((e) => setErr(String(e)))
   }, [runId])
@@ -39,11 +36,11 @@ export default function RunDetail() {
     let cancelled = false
     Promise.all(
       groups.map(async (g) => {
+        const defId = g.trials[0]?.task_def_id
+        if (defId === undefined) return [g.baseId, ''] as const
         try {
-          const r = await fetch(`/api/taskdef/${encodeURIComponent(g.baseId)}`)
-          if (!r.ok) return [g.baseId, ''] as const
-          const d = await r.json()
-          return [g.baseId, (d.instruction as string) || ''] as const
+          const d = await getTaskDef(defId)
+          return [g.baseId, d.instruction || ''] as const
         } catch {
           return [g.baseId, ''] as const
         }

@@ -16,6 +16,7 @@ from benchmark.config import MODEL_CONFIG
 from benchmark.log import setup_logging
 from benchmark.runner import aggregate_trials, build_work_items, run_task
 from benchmark.task import TASKS_ROOT, load_tasks
+from mw import auth, push
 from mw import remote as rmt
 
 
@@ -26,6 +27,13 @@ def _outputs_root() -> Path:
             Path(__file__).resolve().parents[3] / "outputs",
         )
     ) / "runs"
+
+
+def _push_enabled(no_push: bool) -> bool:
+    """Push by default; disabled by --no-push or CUA_PUSH=0."""
+    if no_push:
+        return False
+    return os.getenv("CUA_PUSH", "1").strip().lower() not in ("0", "false", "no")
 
 
 def _print_summary(model: str, results: list[dict]) -> None:
@@ -85,6 +93,69 @@ def cli():
     setup_logging()
 
 
+# ---------- auth ----------
+
+
+@cli.group("auth")
+def auth_group():
+    """Authenticate with the hosted backend."""
+
+
+@auth_group.command("login")
+@click.argument("username")
+@click.option("--api-url", default=None, help="Backend base URL (default: env CUA_API_URL or built-in).")
+@click.password_option(confirmation_prompt=False, help="Password (prompted if omitted).")
+def auth_login(username: str, api_url: str | None, password: str) -> None:
+    """Log in, mint an API key, and save it to ~/.mw/credentials.json."""
+    from benchmark import backend as be
+
+    api_url = api_url or auth.resolve()[0]
+    try:
+        tokens = be.login(api_url, username, password)
+        with be.BackendClient(api_url, tokens["access_token"]) as client:
+            api_key = client.mint_key()
+            user = client.whoami()
+    except Exception as e:
+        raise click.ClickException(str(e)) from e
+    auth.save_credentials(api_url, api_key, user)
+    click.echo(f"Logged in as {user.get('username', username)}; key saved to {auth.CREDENTIALS_PATH}")
+
+
+@auth_group.command("whoami")
+def auth_whoami() -> None:
+    """Show the current backend user."""
+    try:
+        client = auth.make_client(require=True)
+    except PermissionError as e:
+        raise click.UsageError(str(e)) from e
+    with client:
+        click.echo(json.dumps(client.whoami(), indent=2))
+
+
+@auth_group.command("key")
+def auth_key() -> None:
+    """Mint a new API key for the current user (rotates the old one)."""
+    try:
+        client = auth.make_client(require=True)
+    except PermissionError as e:
+        raise click.UsageError(str(e)) from e
+    with client:
+        api_key = client.mint_key()
+        user = client.whoami()
+    auth.save_credentials(auth.resolve()[0], api_key, user)
+    click.echo(f"New API key saved to {auth.CREDENTIALS_PATH}")
+    click.echo(api_key)
+
+
+@auth_group.command("logout")
+def auth_logout() -> None:
+    """Remove saved credentials."""
+    if auth.clear_credentials():
+        click.echo(f"Removed {auth.CREDENTIALS_PATH}")
+    else:
+        click.echo("No saved credentials.")
+
+
 # ---------- bench ----------
 
 
@@ -132,6 +203,12 @@ def bench():
     default=0.99,
     show_default=True,
     help="Fraction of max_score a trial must reach to count as a pass.",
+)
+@click.option(
+    "--no-push",
+    is_flag=True,
+    default=False,
+    help="Don't push results to the backend; keep them local only.",
 )
 @click.option(
     "--kvm-fleet-size",
@@ -183,6 +260,7 @@ def bench_run(
     backend: str,
     trials: int,
     pass_threshold: float,
+    no_push: bool,
     kvm_fleet_size: int,
     kvm_host: str,
     kvm_base_volume: str | None,
@@ -201,6 +279,23 @@ def bench_run(
         raise click.UsageError("YUTORI_API_KEY not set (required for n1.5-* models)")
     if backend == "use-computer" and not os.getenv("USE_COMPUTER_API_KEY"):
         raise click.UsageError("USE_COMPUTER_API_KEY not set (required for --backend use-computer)")
+
+    # Resolve backend auth before the (expensive) run. No credential -> run
+    # local-only (no abort, so the benchmark is still usable without a key); a
+    # present-but-broken credential warns and continues rather than losing a run.
+    push_client = None
+    if not _push_enabled(no_push):
+        click.echo("Push   : disabled (local only)")
+    elif not auth.resolve()[1]:
+        click.echo("Push   : no credentials — running local only (run `mw auth login` to record runs)")
+    else:
+        try:
+            push_client = auth.make_client(require=True)
+            user = push_client.whoami()
+            click.echo(f"Push   : enabled as {user.get('username', '?')}")
+        except Exception as e:
+            push_client = None
+            click.echo(f"Push   : backend unavailable ({e}) — running local only", err=True)
 
     if tasks_spec == "smoke":
         tasks = load_tasks(smoke=True)
@@ -268,6 +363,21 @@ def bench_run(
     _print_summary(model, results_dicts)
     if trials > 1:
         _print_trials_summary(agg)
+
+    if push_client is not None:
+        click.echo("\nPushing results to backend…")
+        try:
+            info = push.push_run_dir(push_client, run_dir, delete_after=True, echo=click.echo)
+            if info:
+                click.echo(f"Pushed run #{info['run_id']}: {info['passed']}/{info['rollouts']} passed")
+        except Exception as e:
+            click.echo(
+                f"WARNING: push failed ({e}). Kept local run at {run_dir}; "
+                f"re-push with `mw bench push {run_id}`.",
+                err=True,
+            )
+        finally:
+            push_client.close()
 
 
 def _run_kvm(model, work_items, run_dir, *, fleet_size, host, base_volume, ram_gb, vcpu,
@@ -348,6 +458,24 @@ def bench_show(run_id: str) -> None:
     _print_summary(model, results)
 
 
+@bench.command("push")
+@click.argument("run_id")
+@click.option("--keep", is_flag=True, default=False, help="Keep the local run dir after a successful push.")
+def bench_push(run_id: str, keep: bool) -> None:
+    """Push (or re-push) a local run to the backend."""
+    run_dir = _outputs_root() / run_id
+    if not (run_dir / "summary.json").exists():
+        raise click.ClickException(f"No summary.json at {run_dir}")
+    try:
+        client = auth.make_client(require=True)
+    except PermissionError as e:
+        raise click.UsageError(str(e)) from e
+    with client:
+        info = push.push_run_dir(client, run_dir, delete_after=not keep, echo=click.echo)
+    if info:
+        click.echo(f"Pushed run #{info['run_id']}: {info['passed']}/{info['rollouts']} passed")
+
+
 # ---------- tasks ----------
 
 
@@ -380,6 +508,28 @@ def tasks_show(task_id: str) -> None:
     if not matches:
         raise click.ClickException(f"Task {task_id} not found under {TASKS_ROOT}")
     click.echo(matches[0].read_text())
+
+
+@tasks_group.command("push")
+@click.option("--category", default=None, help="Only register tasks in this category.")
+def tasks_push(category: str | None) -> None:
+    """Register local tasks in the backend (idempotent via the id manifest)."""
+    tasks = load_tasks()
+    if category:
+        tasks = [t for t in tasks if t.category == category]
+    if not tasks:
+        raise click.ClickException("No tasks to register.")
+    try:
+        client = auth.make_client(require=True)
+    except PermissionError as e:
+        raise click.UsageError(str(e)) from e
+    before = set(push.load_manifest())
+    with client:
+        manifest = push.ensure_tasks(client, tasks)
+    new = sorted(t.id for t in tasks if t.id not in before)
+    click.echo(f"Registered {len(new)} new task(s); {len(manifest)} total in manifest.")
+    for tid in new:
+        click.echo(f"  {tid} -> #{manifest[tid]}")
 
 
 # ---------- sandbox ----------
