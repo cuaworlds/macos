@@ -1,4 +1,5 @@
-import { BrowserRouter, Outlet, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Link, Outlet, Route, Routes } from 'react-router-dom'
+import Logo from './components/Logo'
 import { IS_LOCAL } from './lib/api'
 import { AuthProvider, RequireAuth } from './lib/auth'
 import { useAuth } from './lib/auth-context'
@@ -12,7 +13,12 @@ function AppLayout() {
   return (
     <>
       <header className="topbar">
-        <span className="brand">CUA Worlds</span>
+        <Link className="brand" to="/" aria-label="CUA Worlds home">
+          <Logo size={22} />
+          <span className="brand-name">
+            cua<span className="dim">worlds</span>
+          </span>
+        </Link>
         <span className="topbar-right muted">
           {IS_LOCAL ? (
             <span className="pill">local</span>

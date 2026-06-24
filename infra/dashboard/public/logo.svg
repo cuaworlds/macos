@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" role="img" aria-label="CUA Worlds">
+  <!-- trajectory arc: the agent's path orbiting the world -->
+  <path d="M24.97 11.82A9.9 9.9 0 1 1 16.86 6.14" stroke="#8b93f9" stroke-width="1.6" stroke-linecap="round"/>
+  <!-- the world -->
+  <circle cx="16" cy="16" r="4.3" fill="#6366f1"/>
+  <!-- the agent's action, leading the trajectory -->
+  <circle cx="21.68" cy="7.89" r="2.7" fill="#b6f09c"/>
+</svg>

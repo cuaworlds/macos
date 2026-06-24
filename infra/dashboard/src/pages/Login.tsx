@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
+import Logo from '../components/Logo'
 import { useAuth } from '../lib/auth-context'
 
 export default function Login() {
@@ -29,7 +30,12 @@ export default function Login() {
   return (
     <div className="page login-page">
       <form className="card login-card" onSubmit={onSubmit}>
-        <h1 className="h1">CUA Worlds</h1>
+        <h1 className="login-brand">
+          <Logo size={30} />
+          <span className="brand-name">
+            cua<span className="dim">worlds</span>
+          </span>
+        </h1>
         <div className="muted" style={{ marginBottom: 16 }}>
           Sign in to view benchmark runs.
         </div>

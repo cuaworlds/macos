@@ -1,12 +1,15 @@
 :root {
-  --bg: #0b0c10;
-  --panel: #14161c;
-  --panel-2: #1c1f27;
-  --border: #2a2d36;
-  --text: #d7dae0;
-  --muted: #8a8f99;
-  --accent: #7dd3fc;
-  --accent-bg: rgba(125, 211, 252, 0.12);
+  --bg: #0b0b12;
+  --panel: #14141d;
+  --panel-2: #1d1d2a;
+  --border: #2b2b3b;
+  --text: #e2e2ea;
+  --muted: #8b8b9c;
+  /* brand: indigo world + lime action-spark (see components/Logo) */
+  --accent: #8b8ff9; /* light indigo — links, focus, in-app click rings */
+  --accent-strong: #6366f1; /* solid indigo — fills, the logo's world */
+  --accent-bg: rgba(99, 102, 241, 0.14);
+  --spark: #b6f09c; /* lime — used rarely, the live/active spark */
   --green: #86efac;
   --green-bg: rgba(134, 239, 172, 0.12);
   --red: #fca5a5;
@@ -17,7 +20,7 @@
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  font: 14px/1.5 var(--sans);
+  font: 15px/1.5 var(--sans);
   color: var(--text);
   background: var(--bg);
   color-scheme: dark;
@@ -60,7 +63,7 @@ button:disabled {
 code,
 pre {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .page {
@@ -74,7 +77,7 @@ pre {
   gap: 8px;
   align-items: center;
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: 14px;
   color: var(--muted);
   margin-bottom: 16px;
 }
@@ -86,7 +89,7 @@ pre {
 }
 
 .h1 {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 500;
   margin: 0 0 16px;
   color: var(--text);
@@ -105,13 +108,13 @@ pre {
   text-align: left;
   padding: 10px 14px;
   border-bottom: 1px solid var(--border);
-  font-size: 13px;
+  font-size: 14px;
 }
 .table th {
   font-weight: 500;
   color: var(--muted);
   text-transform: uppercase;
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.04em;
   background: var(--panel-2);
 }
@@ -127,7 +130,7 @@ pre {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
   font-family: var(--mono);
   border: 1px solid var(--border);
   background: var(--panel-2);
@@ -151,7 +154,7 @@ pre {
 .pill.blue {
   color: var(--accent);
   background: var(--accent-bg);
-  border-color: rgba(125, 211, 252, 0.3);
+  border-color: rgba(139, 143, 249, 0.3);
 }
 
 .muted {
@@ -215,7 +218,7 @@ pre {
   padding: 14px;
 }
 .card .label {
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
@@ -244,7 +247,7 @@ pre {
 }
 .scrubber .counter {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
   min-width: 90px;
   text-align: center;
@@ -267,13 +270,13 @@ pre {
 .trial-pill {
   color: var(--accent);
   background: var(--accent-bg);
-  border-color: rgba(125, 211, 252, 0.3);
+  border-color: rgba(139, 143, 249, 0.3);
 }
 .task-text {
   white-space: pre-wrap;
   word-break: break-word;
   line-height: 1.55;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text);
 }
 
@@ -285,7 +288,7 @@ pre {
   margin: 8px 0 14px;
 }
 .run-meta {
-  font-size: 12px;
+  font-size: 13px;
 }
 .view-toggle {
   margin-left: auto;
@@ -296,7 +299,7 @@ pre {
 }
 .view-toggle button {
   padding: 5px 12px;
-  font-size: 12px;
+  font-size: 13px;
   background: var(--panel);
   color: var(--muted);
   border: none;
@@ -342,11 +345,11 @@ pre {
 }
 .task-id-short {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--accent);
 }
 .cat-tag {
-  font-size: 10px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--muted);
@@ -355,7 +358,7 @@ pre {
   padding: 1px 6px;
 }
 .band-tag {
-  font-size: 10px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   border-radius: 4px;
@@ -374,13 +377,13 @@ pre {
   background: var(--red-bg);
 }
 .task-snippet {
-  font-size: 12px;
+  font-size: 13px;
   margin-top: 3px;
   max-width: 52ch;
 }
 .pass-frac {
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -398,7 +401,7 @@ pre {
   padding: 2px 6px;
   border-radius: 5px;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 12px;
   text-decoration: none;
   border: 1px solid var(--border);
   background: var(--panel-2);
@@ -493,7 +496,7 @@ pre {
   left: 18px;
   top: -9px;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.5;
   color: var(--text);
   background: rgba(0, 0, 0, 0.72);
@@ -503,10 +506,10 @@ pre {
 }
 @keyframes clickpulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(125, 211, 252, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.55);
+    box-shadow: 0 0 0 0 rgba(139, 143, 249, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.55);
   }
   100% {
-    box-shadow: 0 0 0 16px rgba(125, 211, 252, 0), 0 0 0 1px rgba(0, 0, 0, 0.55);
+    box-shadow: 0 0 0 16px rgba(139, 143, 249, 0), 0 0 0 1px rgba(0, 0, 0, 0.55);
   }
 }
 
@@ -546,15 +549,33 @@ pre {
   background: var(--panel);
 }
 .topbar .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+.brand-name {
   font-family: var(--mono);
-  font-size: 13px;
-  color: var(--accent);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.brand-name .dim {
+  color: var(--muted);
+}
+.brand:hover .brand-name .dim {
+  color: var(--text);
+}
+.logo {
+  display: block;
+  flex: none;
 }
 .topbar-right {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 13px;
+  font-size: 14px;
 }
 .link-btn {
   background: none;
@@ -608,5 +629,26 @@ pre {
   border-radius: 6px;
   padding: 8px 10px;
   margin-bottom: 12px;
-  font-size: 13px;
+  font-size: 14px;
+}
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin: 4px 0 10px;
+}
+.login-brand .brand-name {
+  font-size: 17px;
+}
+
+/* --- a11y floor: visible keyboard focus + honor reduced motion --- */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marker.click .ring {
+    animation: none !important;
+  }
 }
