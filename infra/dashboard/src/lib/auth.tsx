@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
+import { PageLoader } from '../components/Loading'
 import { clearTokens, getAccess, IS_LOCAL, login as apiLogin, me, setAuthErrorHandler, type User } from './api'
 import { AuthContext, useAuth } from './auth-context'
 
@@ -37,12 +38,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }
 
-  return <AuthContext.Provider value={{ user, loading, login, logout }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{ user, loading, login, logout, setUser }}>{children}</AuthContext.Provider>
+  )
 }
 
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
-  if (loading) return <div className="empty muted">Loading…</div>
+  if (loading) return <PageLoader />
   if (!user) return <Navigate to="/login" replace />
   return <>{children}</>
 }

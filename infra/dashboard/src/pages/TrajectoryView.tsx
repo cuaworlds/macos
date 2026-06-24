@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { Loading } from '../components/Loading'
 import Scrubber from '../components/Scrubber'
 import { getRollout, getTaskDef, getTrajectory } from '../lib/api'
 import {
@@ -154,7 +155,7 @@ export default function TrajectoryView() {
       )}
 
       {err && <div className="empty">Failed to load trajectory: {err}</div>}
-      {!err && steps === null && <div className="empty muted">Loading…</div>}
+      {!err && steps === null && <Loading />}
       {!err && steps && frames.length === 0 && (
         <div className="empty">No frames in this trajectory.</div>
       )}

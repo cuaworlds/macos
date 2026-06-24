@@ -6,6 +6,7 @@ export type AuthState = {
   loading: boolean
   login: (username: string, password: string) => Promise<void>
   logout: () => void
+  setUser: (user: User) => void
 }
 
 export const AuthContext = createContext<AuthState | null>(null)

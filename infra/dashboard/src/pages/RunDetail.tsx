@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Loading } from '../components/Loading'
 import { getTaskDef, listRollouts } from '../lib/api'
 import {
   bandOf,
@@ -14,6 +15,7 @@ type SortKey = 'pass' | 'score' | 'steps' | 'name' | 'id'
 
 export default function RunDetail() {
   const { runId = '' } = useParams()
+  const navigate = useNavigate()
   const [tasks, setTasks] = useState<TaskResult[] | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [labels, setLabels] = useState<Record<string, string>>({})
@@ -117,7 +119,7 @@ export default function RunDetail() {
       </div>
 
       {err && <div className="empty">Failed to load: {err}</div>}
-      {!err && tasks === null && <div className="empty muted">Loading…</div>}
+      {!err && tasks === null && <Loading />}
       {!err && tasks && tasks.length === 0 && (
         <div className="empty">No tasks in this run.</div>
       )}
@@ -209,10 +211,19 @@ export default function RunDetail() {
                   ? '—'
                   : `${t.score}${t.max_score ? ` / ${t.max_score}` : ''}`
               return (
-                <tr key={t.task_id} className="clickable">
+                <tr
+                  key={t.task_id}
+                  className="clickable"
+                  onClick={(e) => {
+                    // let modified clicks and the inner link do their default (new tab, etc.)
+                    if (e.metaKey || e.ctrlKey || e.shiftKey) return
+                    navigate(`/r/${encodeURIComponent(runId)}/t/${encodeURIComponent(t.task_id)}`)
+                  }}
+                >
                   <td>
                     <Link
                       to={`/r/${encodeURIComponent(runId)}/t/${encodeURIComponent(t.task_id)}`}
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <code>{baseTaskId(t.task_id).slice(0, 8)}</code>
                       {t.trial !== undefined && (

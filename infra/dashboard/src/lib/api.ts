@@ -14,7 +14,20 @@ export const IS_LOCAL = (import.meta.env.VITE_DATA_SOURCE as string | undefined)
 const ACCESS_KEY = 'cua_access'
 const REFRESH_KEY = 'cua_refresh'
 
-export type User = { id: number; username: string; email?: string; role?: string }
+export type User = {
+  id: number
+  username: string
+  email?: string
+  role?: string
+  first_name?: string | null
+  last_name?: string | null
+  status?: string
+  created_at?: string
+  last_login?: string | null
+  has_api_key?: boolean
+  api_key_prefix?: string | null
+  api_key_created_at?: string | null
+}
 
 // -- token storage ---------------------------------------------------------
 
@@ -74,7 +87,10 @@ async function apiFetch(path: string, init: RequestInit = {}): Promise<Response>
     onAuthError?.()
     throw new Error('Session expired — please sign in again.')
   }
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null)
+    throw new Error(detail?.detail || `HTTP ${res.status}`)
+  }
   return res
 }
 
@@ -114,6 +130,28 @@ export async function login(username: string, password: string): Promise<void> {
 }
 
 export const me = () => apiJson<User>('/auth/me')
+
+export type ProfileUpdate = { first_name?: string; last_name?: string }
+
+export const updateProfile = (data: ProfileUpdate) =>
+  apiJson<User>('/auth/me', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+
+export async function changePassword(newPassword: string, currentPassword?: string): Promise<void> {
+  await apiFetch('/auth/password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ new_password: newPassword, current_password: currentPassword }),
+  })
+}
+
+/** Generate (and replace) the caller's API key. Returned in plaintext once. */
+export async function generateApiKey(): Promise<string> {
+  return (await apiJson<{ api_key: string }>('/auth/key', { method: 'POST' })).api_key
+}
 
 // -- backend shapes (only the fields we read) ------------------------------
 

@@ -31,7 +31,7 @@ export default function Login() {
     <div className="page login-page">
       <form className="card login-card" onSubmit={onSubmit}>
         <h1 className="login-brand">
-          <Logo size={30} />
+          <Logo size={36} />
           <span className="brand-name">
             cua<span className="dim">worlds</span>
           </span>
