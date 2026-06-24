@@ -117,7 +117,6 @@ def _make_run(tmp_path):
 
 
 def _patch_deps(monkeypatch, tmp_path):
-    monkeypatch.setattr(push, "MANIFEST_PATH", tmp_path / "manifest.json")
     monkeypatch.setattr(
         push,
         "load_tasks",

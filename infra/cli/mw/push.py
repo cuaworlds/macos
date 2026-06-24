@@ -13,10 +13,9 @@ from pathlib import Path
 from typing import Callable
 
 from benchmark.backend import BackendClient, BackendError
-from benchmark.task import TASKS_ROOT, Task, load_tasks
+from benchmark.task import Task, load_tasks
 
 ENVIRONMENT = "cuaworld-macos"
-MANIFEST_PATH = TASKS_ROOT / ".backend-ids.json"
 
 CONTENT_TYPES = {".jsonl": "application/x-ndjson", ".json": "application/json", ".png": "image/png"}
 
@@ -26,25 +25,15 @@ Echo = Callable[[str], None]
 # -- task registration -----------------------------------------------------
 
 
-def load_manifest() -> dict[str, int]:
-    try:
-        return json.loads(MANIFEST_PATH.read_text())
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
-
-
-def save_manifest(manifest: dict[str, int]) -> None:
-    MANIFEST_PATH.write_text(json.dumps(manifest, indent=2, sort_keys=True))
-
-
 def ensure_tasks(client: BackendClient, tasks: list[Task]) -> dict[str, int]:
-    """Register any unmapped tasks and return the local-id -> backend-id manifest."""
-    manifest = load_manifest()
-    changed = False
+    """Upsert tasks in the backend and return the local-id -> backend-id map.
+
+    The backend is keyed on local_task_id and the upsert is idempotent, so this
+    keeps no local state — ids are resolved fresh from the remote on every push.
+    """
+    mapping: dict[str, int] = {}
     for t in tasks:
-        if t.id in manifest:
-            continue
-        created = client.create_task(
+        task = client.create_task(
             {
                 "environment": ENVIRONMENT,
                 "prompt": t.instruction,
@@ -57,11 +46,8 @@ def ensure_tasks(client: BackendClient, tasks: list[Task]) -> dict[str, int]:
                 },
             }
         )
-        manifest[t.id] = created["id"]
-        changed = True
-    if changed:
-        save_manifest(manifest)
-    return manifest
+        mapping[t.id] = task["id"]
+    return mapping
 
 
 # -- result -> rollout mapping (pure) --------------------------------------

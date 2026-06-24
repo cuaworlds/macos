@@ -513,7 +513,7 @@ def tasks_show(task_id: str) -> None:
 @tasks_group.command("push")
 @click.option("--category", default=None, help="Only register tasks in this category.")
 def tasks_push(category: str | None) -> None:
-    """Register local tasks in the backend (idempotent via the id manifest)."""
+    """Register local tasks in the backend (idempotent; keyed on local_task_id)."""
     tasks = load_tasks()
     if category:
         tasks = [t for t in tasks if t.category == category]
@@ -523,13 +523,11 @@ def tasks_push(category: str | None) -> None:
         client = auth.make_client(require=True)
     except PermissionError as e:
         raise click.UsageError(str(e)) from e
-    before = set(push.load_manifest())
     with client:
-        manifest = push.ensure_tasks(client, tasks)
-    new = sorted(t.id for t in tasks if t.id not in before)
-    click.echo(f"Registered {len(new)} new task(s); {len(manifest)} total in manifest.")
-    for tid in new:
-        click.echo(f"  {tid} -> #{manifest[tid]}")
+        mapping = push.ensure_tasks(client, tasks)
+    click.echo(f"Synced {len(mapping)} task(s) to the backend.")
+    for tid in sorted(mapping):
+        click.echo(f"  {tid} -> #{mapping[tid]}")
 
 
 # ---------- sandbox ----------
