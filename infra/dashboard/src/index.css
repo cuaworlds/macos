@@ -241,6 +241,11 @@ pre {
   border: 1px solid var(--border);
   border-radius: 8px;
 }
+.scrubber button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 .scrubber input[type='range'] {
   flex: 1;
   accent-color: var(--accent);
