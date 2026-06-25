@@ -1,5 +1,5 @@
 import { FiLogOut, FiUser } from 'react-icons/fi'
-import { BrowserRouter, Link, Outlet, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Link, NavLink, Outlet, Route, Routes } from 'react-router-dom'
 import Logo from './components/Logo'
 import { IS_LOCAL } from './lib/api'
 import { AuthProvider, RequireAuth } from './lib/auth'
@@ -8,6 +8,8 @@ import Login from './pages/Login'
 import Profile from './pages/Profile'
 import RunsList from './pages/RunsList'
 import RunDetail from './pages/RunDetail'
+import TasksList from './pages/TasksList'
+import TaskDetail from './pages/TaskDetail'
 import TrajectoryView from './pages/TrajectoryView'
 
 function AppLayout() {
@@ -21,6 +23,12 @@ function AppLayout() {
             cua<span className="dim">worlds</span>
           </span>
         </Link>
+        <nav className="topbar-nav">
+          <NavLink to="/" end>
+            Runs
+          </NavLink>
+          <NavLink to="/dataset">Dataset</NavLink>
+        </nav>
         <span className="topbar-right muted">
           {IS_LOCAL ? (
             <span className="pill">local</span>
@@ -56,6 +64,8 @@ export default function App() {
             }
           >
             <Route path="/" element={<RunsList />} />
+            <Route path="/dataset" element={<TasksList />} />
+            <Route path="/dataset/:taskDefId" element={<TaskDetail />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/r/:runId" element={<RunDetail />} />
             <Route path="/r/:runId/t/:taskId" element={<TrajectoryView />} />

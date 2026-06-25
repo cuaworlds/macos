@@ -49,6 +49,32 @@ async function readTaskDef(tasksRoot: string, taskId: string) {
   return null
 }
 
+async function listTaskDefs(tasksRoot: string) {
+  let categories: import('fs').Dirent[]
+  try {
+    categories = await fs.readdir(tasksRoot, { withFileTypes: true })
+  } catch {
+    return []
+  }
+  const defs = []
+  for (const cat of categories) {
+    if (!cat.isDirectory()) continue
+    let files: string[]
+    try {
+      files = await fs.readdir(path.join(tasksRoot, cat.name))
+    } catch {
+      continue
+    }
+    for (const file of files) {
+      if (!file.endsWith('.json')) continue
+      const def = await readTaskDef(tasksRoot, file.replace(/\.json$/, ''))
+      if (def) defs.push(def)
+    }
+  }
+  defs.sort((a, b) => a.category.localeCompare(b.category) || a.task_id.localeCompare(b.task_id))
+  return defs
+}
+
 async function listRuns(root: string) {
   let entries: import('fs').Dirent[]
   try {
@@ -152,6 +178,15 @@ export function runsApi(): Plugin {
           const def = await readTaskDef(tasksRoot, taskId)
           if (def === null) return sendJson(res, 404, { error: 'task not found' })
           return sendJson(res, 200, def)
+        } catch (err) {
+          return sendJson(res, 500, { error: err instanceof Error ? err.message : String(err) })
+        }
+      })
+
+      server.middlewares.use('/api/tasks', async (req, res, next) => {
+        if (req.method !== 'GET') return next()
+        try {
+          return sendJson(res, 200, await listTaskDefs(tasksRoot))
         } catch (err) {
           return sendJson(res, 500, { error: err instanceof Error ? err.message : String(err) })
         }

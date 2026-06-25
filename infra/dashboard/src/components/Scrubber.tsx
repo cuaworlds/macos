@@ -1,4 +1,12 @@
 import { useEffect, useRef } from 'react'
+import {
+  FiChevronLeft,
+  FiChevronRight,
+  FiChevronsLeft,
+  FiChevronsRight,
+  FiPause,
+  FiPlay,
+} from 'react-icons/fi'
 
 type Props = {
   value: number
@@ -68,23 +76,45 @@ export default function Scrubber({
   const last = Math.max(0, total - 1)
   return (
     <div className="scrubber" ref={rootRef} title="Scroll over this bar to scrub frames">
-      <button onClick={() => onChange(0)} disabled={total === 0}>
-        ⏮
+      <button
+        onClick={() => onChange(0)}
+        disabled={total === 0}
+        title="First frame"
+        aria-label="First frame"
+      >
+        <FiChevronsLeft size={16} />
       </button>
-      <button onClick={() => onChange(Math.max(0, value - 1))} disabled={value <= 0}>
-        ◀
+      <button
+        onClick={() => onChange(Math.max(0, value - 1))}
+        disabled={value <= 0}
+        title="Previous frame"
+        aria-label="Previous frame"
+      >
+        <FiChevronLeft size={16} />
       </button>
-      <button onClick={onTogglePlay} disabled={total === 0}>
-        {playing ? '⏸' : '▶'}
+      <button
+        onClick={onTogglePlay}
+        disabled={total === 0}
+        title={playing ? 'Pause' : 'Play'}
+        aria-label={playing ? 'Pause' : 'Play'}
+      >
+        {playing ? <FiPause size={16} /> : <FiPlay size={16} />}
       </button>
       <button
         onClick={() => onChange(Math.min(last, value + 1))}
         disabled={value >= last}
+        title="Next frame"
+        aria-label="Next frame"
       >
-        ▶
+        <FiChevronRight size={16} />
       </button>
-      <button onClick={() => onChange(last)} disabled={total === 0}>
-        ⏭
+      <button
+        onClick={() => onChange(last)}
+        disabled={total === 0}
+        title="Last frame"
+        aria-label="Last frame"
+      >
+        <FiChevronsRight size={16} />
       </button>
       <input
         type="range"

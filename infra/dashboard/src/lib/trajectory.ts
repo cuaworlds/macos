@@ -65,6 +65,14 @@ export type TaskDef = {
   instruction: string
   pre_command: string
   grading_command: [string, number][]
+  // Backend-only metadata (absent in local/offline mode).
+  tags?: string[]
+  status?: string
+}
+
+/** Sum of a task's grading-checkpoint weights — the maximum achievable score. */
+export function maxScoreOf(def: Pick<TaskDef, 'grading_command'>): number {
+  return def.grading_command.reduce((acc, [, w]) => acc + (w || 0), 0)
 }
 
 export type GradeLogEntry = {
