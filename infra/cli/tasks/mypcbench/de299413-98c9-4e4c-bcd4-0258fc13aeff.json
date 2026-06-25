@@ -1,0 +1,28 @@
+{
+  "id": "de299413-98c9-4e4c-bcd4-0258fc13aeff",
+  "snapshot": {
+    "en": "snapshot_used_en"
+  },
+  "force_snapshot_recovery": true,
+  "task": {
+    "en": "In Safari, go to the xkcd comic at https://xkcd.com/2034 (titled \"Equations\"). It shows several panels of made-up equations, each with a caption. Look at the panel captioned \"All Fluid Dynamics Equations\". Its equation contains a simple fraction - one whole number written above another. By looking at the comic, read that fraction. Then navigate to the xkcd comic whose number is the numerator immediately followed by the denominator (for example, a fraction of 5 over 12 would mean comic number 512) - that is, go to https://xkcd.com/<numerator><denominator> - and leave that comic open in the front Safari tab. Do not use any app other than Safari."
+  },
+  "pre_command": "UDB=\"$HOME/Library/Application Support/com.apple.TCC/TCC.db\"; sqlite3 \"$UDB\" \"INSERT OR REPLACE INTO access (service,client,client_type,auth_value,auth_reason,auth_version,csreq,indirect_object_identifier_type,indirect_object_identifier,flags) VALUES ('kTCCServiceAppleEvents','/usr/libexec/sshd-keygen-wrapper',1,2,3,1,NULL,0,'com.apple.Safari',0);\" 2>/dev/null; (sudo killall tccd 2>/dev/null; killall tccd 2>/dev/null); sleep 1; for A in \"/System/Applications/Utilities/Terminal.app\" \"/Applications/iTerm.app\" \"/Applications/iTerm2.app\" \"/System/Applications/Utilities/Script Editor.app\" \"/Applications/Utilities/Script Editor.app\" \"/Applications/Automator.app\" \"/System/Applications/Automator.app\" \"/System/Applications/Shortcuts.app\"; do [ -d \"$A/Contents/MacOS\" ] && (chmod 000 \"$A/Contents/MacOS\" 2>/dev/null || sudo chmod 000 \"$A/Contents/MacOS\" 2>/dev/null); done; osascript -e 'tell application \"Safari\" to quit' 2>/dev/null; killall Safari 2>/dev/null; sleep 3; HDB=\"$HOME/Library/Safari/History.db\"; sqlite3 \"$HDB\" \"DELETE FROM history_visits; DELETE FROM history_items;\" 2>/dev/null; sqlite3 \"$HDB\" \"PRAGMA wal_checkpoint(TRUNCATE);\" 2>/dev/null; defaults write com.apple.Safari ShowFullURLInSmartSearchField -bool true 2>/dev/null; open -a Safari \"about:blank\" 2>/dev/null; sleep 6; ",
+  "before_action_delay_seconds": 10,
+  "before_grading_delay_seconds": 30,
+  "grading_command": [
+    [
+      "killall Safari 2>/dev/null; sleep 3; HDB=\"$HOME/Library/Safari/History.db\"; U=$(sqlite3 \"$HDB\" \"SELECT url FROM history_items;\" 2>/dev/null); echo \"$U\" | grep -qE 'xkcd\\.com/823([/?]|$)' && echo True || echo False",
+      70
+    ],
+    [
+      "HDB=\"$HOME/Library/Safari/History.db\"; U=$(sqlite3 \"$HDB\" \"SELECT url FROM history_items;\" 2>/dev/null); echo \"$U\" | grep -qE 'xkcd\\.com/2034([/?]|$)' && echo True || echo False",
+      30
+    ]
+  ],
+  "source": {
+    "benchmark": "mypcbench",
+    "type": "gui_bound_state",
+    "note": "Browser-native CUA-necessity task. GUI Bound State (priors-resistant): the needed value is an incidental fake fraction (8/23) buried in one panel of an equations comic - no DOM text/transcript, and not a memorable punchline, so the agent must locate the panel and read the pixels. Encoded into the follow-on navigation (xkcd.com/823); graded via front-tab URL + History.db. Real public site; no LLM judge."
+  }
+}
