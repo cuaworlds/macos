@@ -1,7 +1,16 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { changePassword, generateApiKey, me, updateProfile, type User } from '../lib/api'
+import {
+  changePassword,
+  generateApiKey,
+  inviteUser,
+  me,
+  updateProfile,
+  type InviteUserResult,
+  type User,
+} from '../lib/api'
 import { useAuth } from '../lib/auth-context'
+import Modal from '../components/Modal'
 
 const fmtDate = (iso?: string | null) =>
   iso ? new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'n/a'
@@ -26,7 +35,146 @@ export default function Profile() {
       <NameCard user={user} onSaved={setUser} />
       <PasswordCard />
       <ApiKeyCard />
+      {user.role === 'admin' && <InviteCard />}
     </div>
+  )
+}
+
+function InviteCard() {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <section className="card profile-section">
+      <div className="label">Invite a user</div>
+      <p className="muted hint">
+        Create a new account and send them an invitation. They’ll be able to sign in with the username and
+        password you set here.
+      </p>
+      <div className="form-actions">
+        <button type="button" className="btn" onClick={() => setOpen(true)}>
+          Invite user
+        </button>
+      </div>
+      {open && <InviteModal onClose={() => setOpen(false)} />}
+    </section>
+  )
+}
+
+function InviteModal({ onClose }: { onClose: () => void }) {
+  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
+  const [username, setUsername] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<Msg>(null)
+  const [invited, setInvited] = useState<InviteUserResult | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  const canSubmit = Boolean(email.trim()) && Boolean(username.trim()) && !busy
+
+  const onSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    setBusy(true)
+    setMsg(null)
+    try {
+      // Backend takes first/last name; split the single name field on first space.
+      const trimmed = name.trim()
+      const sp = trimmed.indexOf(' ')
+      const first_name = sp === -1 ? trimmed : trimmed.slice(0, sp)
+      const last_name = sp === -1 ? undefined : trimmed.slice(sp + 1).trim()
+      const result = await inviteUser({
+        email: email.trim(),
+        username: username.trim(),
+        first_name: first_name || undefined,
+        last_name: last_name || undefined,
+      })
+      setInvited(result)
+    } catch (e) {
+      setMsg({ ok: false, text: errText(e) })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (invited) {
+    const { user, temp_password } = invited
+    const creds =
+      `Created a CUA Worlds account for you 🎉\n\n` +
+      `Here are your credentials:\n` +
+      `Username: ${user.username}\n` +
+      `Email: ${user.email ?? email.trim()}\n` +
+      `Password: ${temp_password}\n\n` +
+      `Sign in at ${window.location.origin} and change your password after your first login.`
+
+    const copy = async () => {
+      await navigator.clipboard.writeText(creds)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+
+    const inviteAnother = () => {
+      setEmail('')
+      setName('')
+      setUsername('')
+      setMsg(null)
+      setCopied(false)
+      setInvited(null)
+    }
+
+    return (
+      <Modal title="User invited" onClose={onClose}>
+        <p className="muted hint">
+          <strong>{user.username}</strong> was created with{' '}
+          <span className="pill amber">{user.status ?? 'new'}</span> status. Copy their credentials and share
+          them securely — the password won’t be shown again.
+        </p>
+        <pre className="creds-box">{creds}</pre>
+        <div className="form-actions form-actions-stack">
+          <button type="button" className="btn btn-block" onClick={copy}>
+            {copied ? 'Copied' : 'Copy credentials'}
+          </button>
+          <button type="button" className="btn btn-block" onClick={inviteAnother}>
+            Invite another
+          </button>
+        </div>
+      </Modal>
+    )
+  }
+
+  return (
+    <Modal title="Invite a user" onClose={onClose}>
+      <form onSubmit={onSubmit}>
+        <label className="field">
+          <span className="label">Email</span>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="off"
+            required
+          />
+        </label>
+        <label className="field">
+          <span className="label">Name</span>
+          <input value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" />
+        </label>
+        <label className="field">
+          <span className="label">Username</span>
+          <input
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            autoComplete="off"
+            required
+          />
+        </label>
+        <p className="muted hint">A temporary password is generated automatically and shown once after you invite.</p>
+        <div className="form-actions form-actions-stack">
+          <button type="submit" className="btn btn-block" disabled={!canSubmit}>
+            {busy ? 'Inviting…' : 'Invite'}
+          </button>
+          {msg && <span className={msg.ok ? 'form-ok' : 'form-err'}>{msg.text}</span>}
+        </div>
+      </form>
+    </Modal>
   )
 }
 

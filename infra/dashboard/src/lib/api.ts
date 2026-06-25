@@ -153,6 +153,25 @@ export async function generateApiKey(): Promise<string> {
   return (await apiJson<{ api_key: string }>('/auth/key', { method: 'POST' })).api_key
 }
 
+export type InviteUserInput = {
+  email: string
+  username: string
+  first_name?: string
+  last_name?: string
+  role?: string
+  org_slug?: string
+}
+
+export type InviteUserResult = { user: User; temp_password: string }
+
+/** Invite a new user. Admin only; the backend generates the temp password. */
+export const inviteUser = (input: InviteUserInput) =>
+  apiJson<InviteUserResult>('/users/invite', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+
 // -- backend shapes (only the fields we read) ------------------------------
 
 type BackendRun = { id: number; total_tasks: number; created_at: string }
