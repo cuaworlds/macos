@@ -1,0 +1,36 @@
+{
+  "id": "b47aa61b-50db-4735-a2d4-790713c2974b",
+  "snapshot": {
+    "en": "snapshot_used_en"
+  },
+  "force_snapshot_recovery": true,
+  "task": {
+    "en": "A file named `invite.txt` is on the Desktop describing a meeting. Open and read it, then in Calendar create the event it describes: title exactly `Budget Review`, on the date given in the file, from the start time to the end time given in the file. Put it on any calendar. Do not create any other events."
+  },
+  "pre_command": "mkdir -p \"$HOME/Desktop\"; printf 'Meeting invitation\\nTitle: Budget Review\\nDate: 2026-07-22\\nStart: 11:00 AM\\nEnd: 11:45 AM\\nLocation: Conference Room B\\nPlease add this to your calendar.\\n' > \"$HOME/Desktop/invite.txt\"; for A in \"/System/Applications/Utilities/Terminal.app\" \"/Applications/iTerm.app\" \"/Applications/iTerm2.app\" \"/System/Applications/Utilities/Script Editor.app\" \"/Applications/Utilities/Script Editor.app\" \"/Applications/Automator.app\" \"/System/Applications/Automator.app\" \"/System/Applications/Shortcuts.app\"; do [ -d \"$A/Contents/MacOS\" ] && (chmod 000 \"$A/Contents/MacOS\" 2>/dev/null || sudo chmod 000 \"$A/Contents/MacOS\" 2>/dev/null); done; DB=\"$HOME/Library/Calendars/Calendar.sqlitedb\"; killall Calendar 2>/dev/null; sleep 2; for TRG in $(sqlite3 \"$DB\" \"SELECT name FROM sqlite_master WHERE type='trigger' AND tbl_name='CalendarItem';\" 2>/dev/null); do sqlite3 \"$DB\" \"DROP TRIGGER IF EXISTS \\\"$TRG\\\";\" 2>/dev/null; done; sqlite3 \"$DB\" \"DELETE FROM CalendarItem WHERE summary='Budget Review';\" 2>/dev/null; sqlite3 \"$DB\" \"PRAGMA wal_checkpoint(TRUNCATE);\" 2>/dev/null; open -gj -a Calendar 2>/dev/null; sleep 5; ",
+  "before_action_delay_seconds": 10,
+  "before_grading_delay_seconds": 30,
+  "grading_command": [
+    [
+      "DB=\"$HOME/Library/Calendars/Calendar.sqlitedb\"; killall Calendar 2>/dev/null; sleep 2; N=$(sqlite3 \"$DB\" \"SELECT count(*) FROM CalendarItem ci JOIN Calendar c ON c.ROWID=ci.calendar_id JOIN Store s ON s.ROWID=c.store_id WHERE s.type=0 AND ci.summary='Budget Review';\" 2>/dev/null); [ \"$N\" -ge 1 ] 2>/dev/null && echo True || echo False",
+      30
+    ],
+    [
+      "DB=\"$HOME/Library/Calendars/Calendar.sqlitedb\"; D=$(sqlite3 \"$DB\" \"SELECT date(ci.start_date+978307200,'unixepoch','localtime') FROM CalendarItem ci JOIN Calendar c ON c.ROWID=ci.calendar_id JOIN Store s ON s.ROWID=c.store_id WHERE s.type=0 AND ci.summary='Budget Review' ORDER BY ci.start_date DESC LIMIT 1;\" 2>/dev/null); [ \"$D\" = \"2026-07-22\" ] && echo True || echo False",
+      25
+    ],
+    [
+      "DB=\"$HOME/Library/Calendars/Calendar.sqlitedb\"; T=$(sqlite3 \"$DB\" \"SELECT strftime('%H:%M',ci.start_date+978307200,'unixepoch','localtime') FROM CalendarItem ci JOIN Calendar c ON c.ROWID=ci.calendar_id JOIN Store s ON s.ROWID=c.store_id WHERE s.type=0 AND ci.summary='Budget Review' ORDER BY ci.start_date DESC LIMIT 1;\" 2>/dev/null); [ \"$T\" = \"11:00\" ] && echo True || echo False",
+      25
+    ],
+    [
+      "DB=\"$HOME/Library/Calendars/Calendar.sqlitedb\"; T=$(sqlite3 \"$DB\" \"SELECT strftime('%H:%M',ci.end_date+978307200,'unixepoch','localtime') FROM CalendarItem ci JOIN Calendar c ON c.ROWID=ci.calendar_id JOIN Store s ON s.ROWID=c.store_id WHERE s.type=0 AND ci.summary='Budget Review' ORDER BY ci.start_date DESC LIMIT 1;\" 2>/dev/null); [ \"$T\" = \"11:45\" ] && echo True || echo False",
+      20
+    ]
+  ],
+  "source": {
+    "benchmark": "mypcbench",
+    "type": "multi_step_orchestration",
+    "note": "Re-grounded onto native macOS apps; concept port, not a literal import."
+  }
+}
