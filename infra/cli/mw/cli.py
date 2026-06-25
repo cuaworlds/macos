@@ -124,24 +124,41 @@ def auth_login(username: str, api_url: str | None, password: str) -> None:
 @auth_group.command("whoami")
 def auth_whoami() -> None:
     """Show the current backend user."""
+    from benchmark.backend import BackendError
+
     try:
         client = auth.make_client(require=True)
     except PermissionError as e:
         raise click.UsageError(str(e)) from e
-    with client:
-        click.echo(json.dumps(client.whoami(), indent=2))
+    try:
+        with client:
+            user = client.whoami()
+    except BackendError as e:
+        raise click.ClickException(
+            f"Could not fetch your profile: {e}\n"
+            "Your API key may be invalid or expired — run `mw auth login <username>` to refresh it."
+        ) from e
+    click.echo(json.dumps(user, indent=2))
 
 
 @auth_group.command("key")
 def auth_key() -> None:
     """Mint a new API key for the current user (rotates the old one)."""
+    from benchmark.backend import BackendError
+
     try:
         client = auth.make_client(require=True)
     except PermissionError as e:
         raise click.UsageError(str(e)) from e
-    with client:
-        api_key = client.mint_key()
-        user = client.whoami()
+    try:
+        with client:
+            api_key = client.mint_key()
+            user = client.whoami()
+    except BackendError as e:
+        raise click.ClickException(
+            f"Could not rotate your API key: {e}\n"
+            "Your API key may be invalid or expired — run `mw auth login <username>` to refresh it."
+        ) from e
     auth.save_credentials(auth.resolve()[0], api_key, user)
     click.echo(f"New API key saved to {auth.CREDENTIALS_PATH}")
     click.echo(api_key)

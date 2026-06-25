@@ -167,7 +167,13 @@ type BackendRollout = {
   duration_seconds?: number | null
   metadata?: Record<string, unknown> | null
 }
-type BackendTask = { id: number; prompt: string; metadata?: Record<string, unknown> | null }
+type BackendTask = {
+  id: number
+  prompt: string
+  status?: string
+  tags?: string[] | null
+  metadata?: Record<string, unknown> | null
+}
 type ArtifactManifest = {
   trajectory_url?: string | null
   result_url?: string | null
@@ -211,10 +217,12 @@ function taskToDef(t: BackendTask): TaskDef {
   const m = (t.metadata ?? {}) as Record<string, unknown>
   return {
     task_id: String(t.id),
-    category: (m.category as string) ?? '',
+    category: (m.category as string) ?? (t.tags?.[0] ?? ''),
     instruction: t.prompt,
     pre_command: (m.pre_command as string) ?? '',
     grading_command: (m.grading_command as [string, number][]) ?? [],
+    tags: t.tags ?? undefined,
+    status: t.status,
   }
 }
 
@@ -254,6 +262,11 @@ export async function getRollout(runId: string, rolloutId: string): Promise<Task
     return withDefId(await localJson<TaskResult>(`/outputs/runs/${enc(runId)}/${enc(rolloutId)}/result.json`))
   }
   return rolloutToResult(await apiJson<BackendRollout>(`/rollouts/${enc(rolloutId)}`))
+}
+
+export async function listTasks(): Promise<TaskDef[]> {
+  if (IS_LOCAL) return localJson<TaskDef[]>('/api/tasks')
+  return (await fetchAll<BackendTask>('/tasks')).map(taskToDef)
 }
 
 export async function getTaskDef(taskId: number | string): Promise<TaskDef> {
