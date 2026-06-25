@@ -1,0 +1,32 @@
+{
+  "id": "8140db55-1aa0-451d-b554-af9a47a79486",
+  "snapshot": {
+    "en": "snapshot_used_en"
+  },
+  "force_snapshot_recovery": true,
+  "task": {
+    "en": "In Mail, create a new draft message (do NOT send it) addressed to `pam.beesly@dundermifflin.com`, with the subject exactly `Lunch reimbursement`, and a body that mentions the amount `$100`. Close the draft so it is saved to the Drafts mailbox. Do not send the message and do not create any other drafts."
+  },
+  "pre_command": "UDB=\"$HOME/Library/Application Support/com.apple.TCC/TCC.db\"; sqlite3 \"$UDB\" \"INSERT OR REPLACE INTO access (service,client,client_type,auth_value,auth_reason,auth_version,csreq,indirect_object_identifier_type,indirect_object_identifier,flags) VALUES ('kTCCServiceAppleEvents','/usr/libexec/sshd-keygen-wrapper',1,2,3,1,NULL,0,'com.apple.mail',0);\" 2>/dev/null; (sudo killall tccd 2>/dev/null; killall tccd 2>/dev/null); sleep 1; for A in \"/System/Applications/Utilities/Terminal.app\" \"/Applications/iTerm.app\" \"/Applications/iTerm2.app\" \"/System/Applications/Utilities/Script Editor.app\" \"/Applications/Utilities/Script Editor.app\" \"/Applications/Automator.app\" \"/System/Applications/Automator.app\" \"/System/Applications/Shortcuts.app\"; do [ -d \"$A/Contents/MacOS\" ] && (chmod 000 \"$A/Contents/MacOS\" 2>/dev/null || sudo chmod 000 \"$A/Contents/MacOS\" 2>/dev/null); done; osascript -e 'tell application \"Mail\" to quit' 2>/dev/null; killall Mail 2>/dev/null; sleep 3; EI=\"$HOME/Library/Mail/V10/MailData/Envelope Index\"; sqlite3 \"$EI\" \"DELETE FROM messages WHERE subject IN (SELECT ROWID FROM subjects WHERE subject LIKE '%Lunch reimbursement%');\" 2>/dev/null; sqlite3 \"$EI\" \"DELETE FROM subjects WHERE subject LIKE '%Lunch reimbursement%';\" 2>/dev/null; sqlite3 \"$EI\" \"PRAGMA wal_checkpoint(TRUNCATE);\" 2>/dev/null; find \"$HOME/Library/Mail\" -path '*Drafts.mbox*' -name '*.emlx' -delete 2>/dev/null; open -gj -a Mail 2>/dev/null; sleep 8; ",
+  "before_action_delay_seconds": 10,
+  "before_grading_delay_seconds": 30,
+  "grading_command": [
+    [
+      "MAIL=$(osascript -e 'tell application \"Mail\" to get subject of every message of (first mailbox whose name contains \"Draft\")' 2>/dev/null); echo \"$MAIL\" | grep -qi 'Lunch reimbursement' && echo True || echo False",
+      40
+    ],
+    [
+      "MAIL=$(osascript -e 'tell application \"Mail\" to get address of to recipients of every message of (first mailbox whose name contains \"Draft\")' 2>/dev/null); echo \"$MAIL\" | grep -qi 'pam.beesly@dundermifflin.com' && echo True || echo False",
+      30
+    ],
+    [
+      "MAIL=$(osascript -e 'tell application \"Mail\" to get content of every message of (first mailbox whose name contains \"Draft\")' 2>/dev/null); echo \"$MAIL\" | grep -qi '100' && echo True || echo False",
+      30
+    ]
+  ],
+  "source": {
+    "benchmark": "mypcbench",
+    "type": "bounded_action",
+    "note": "Re-grounded onto native macOS apps; concept port, not a literal import."
+  }
+}
