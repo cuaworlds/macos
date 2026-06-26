@@ -20,6 +20,17 @@ bench model="claude-haiku-4-5" tasks="smoke":
 bench-kvm model="claude-haiku-4-5" tasks="smoke" size="4":
     uv run mw bench run --backend kvm --model {{model}} --tasks {{tasks}} --kvm-fleet-size {{size}}
 
+# Manage the MyPCBench apps sidecar (the 17 seeded web apps on :3001-3017).
+# Actions: pull (one-time image fetch+load) | up | down | status | logs | reset
+mypcbench-apps action="up":
+    infra/mypcbench/run-apps.sh {{action}}
+
+# Run the MyPCBench task batch on a 1-guest KVM fleet, reverse-tunnelling the apps in.
+# Precondition: `just mypcbench-apps up`. Tasks default to the 5-task seed set.
+bench-mypcbench model="n1.5-latest" tasks="mypc-calendar-improv,mypc-mail-star-tax,mypc-mail-read-eticket,mypc-shop-cart,mypc-calendar-dentist":
+    uv run mw bench run --backend kvm --model {{model}} --tasks {{tasks}} \
+        --kvm-fleet-size 1 --kvm-app-tunnel 3001-3017
+
 # Open a macOS sandbox in the browser
 sandbox sandbox_id="":
     uv run mw sandbox open {{ if sandbox_id != "" { "--sandbox-id " + sandbox_id } else { "" } }}

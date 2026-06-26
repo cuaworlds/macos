@@ -74,6 +74,11 @@ class KvmConfig:
     web_port_base: int = WEB_PORT_BASE
     container_prefix: str = "mw"
     boot_timeout_s: int = 900  # 15 min ceiling per guest to reach SSH
+    # Optional app reverse-tunnel: ports forwarded from each guest's localhost back to
+    # the host's localhost (where a sidecar like the MyPCBench apps container listens),
+    # via `ssh -R`. Empty = feature off (default behaviour byte-identical). Lets in-guest
+    # Safari reach `http://localhost:<port>` over the same SSH path the fleet already uses.
+    app_tunnel_ports: tuple[int, ...] = ()
 
     def __post_init__(self) -> None:
         self.base_volume = Path(self.base_volume)

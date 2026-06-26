@@ -270,6 +270,13 @@ def bench():
     help="KVM only: 'overlay' (default) = thin qcow2 overlay over a shared read-only "
     "base (near-instant clones, ~MBs/guest, FS-agnostic); 'copy' = full per-guest copy (fallback).",
 )
+@click.option(
+    "--kvm-app-tunnel",
+    default=None,
+    help="KVM only: reverse-tunnel host ports into each guest's localhost (for a sidecar "
+    "like the MyPCBench apps container). Accepts a range '3001-3017' or a list '3001,3016'. "
+    "Requires the sidecar to be listening on those host ports (e.g. run-apps.sh up).",
+)
 def bench_run(
     model: str,
     tasks_spec: str,
@@ -287,6 +294,7 @@ def bench_run(
     kvm_ssh_key: str | None,
     kvm_ssh_login: str | None,
     kvm_disk_mode: str,
+    kvm_app_tunnel: str | None,
 ) -> None:
     """Run benchmark tasks against a model."""
     provider = MODEL_CONFIG[model].provider
@@ -334,6 +342,9 @@ def bench_run(
         click.echo(f"Trials : {trials} per task ({len(work_items)} rollouts), pass>={pass_threshold:g}")
 
     if backend == "kvm":
+        app_tunnel_ports = _parse_tunnel_ports(kvm_app_tunnel)
+        if app_tunnel_ports:
+            _preflight_app_tunnel(kvm_host, app_tunnel_ports)
         resolved_env = None
         if env_pkg:
             if kvm_base_volume:
@@ -358,7 +369,7 @@ def bench_run(
             fleet_size=kvm_fleet_size, host=kvm_host,
             base_volume=kvm_base_volume, ram_gb=kvm_ram_gb, vcpu=kvm_vcpu,
             ssh_key=kvm_ssh_key, ssh_login=kvm_ssh_login, disk_mode=kvm_disk_mode,
-            resolved_env=resolved_env,
+            resolved_env=resolved_env, app_tunnel_ports=app_tunnel_ports,
         )
     else:
         # Managed SDK: sequential, one fresh sandbox per (task, trial).
@@ -397,15 +408,51 @@ def bench_run(
             push_client.close()
 
 
+def _parse_tunnel_ports(spec: str | None) -> tuple[int, ...]:
+    """Parse '3001-3017' or '3001,3016' into a sorted unique port tuple. () if unset."""
+    if not spec:
+        return ()
+    ports: set[int] = set()
+    for chunk in spec.split(","):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        if "-" in chunk:
+            lo, hi = chunk.split("-", 1)
+            ports.update(range(int(lo), int(hi) + 1))
+        else:
+            ports.add(int(chunk))
+    return tuple(sorted(ports))
+
+
+def _preflight_app_tunnel(host: str, ports: tuple[int, ...]) -> None:
+    """Warn (don't fail) if the host sidecar isn't listening on the first tunnel port."""
+    import socket
+
+    probe_host = "127.0.0.1" if host in ("localhost", "127.0.0.1", "") else host
+    p = ports[0]
+    try:
+        with socket.create_connection((probe_host, p), timeout=2):
+            return
+    except OSError:
+        click.echo(
+            f"WARNING: nothing is listening on {probe_host}:{p} — the app reverse-tunnel "
+            f"will have no backend. Start the MyPCBench apps first "
+            f"(e.g. `just mypcbench-apps up`, or `infra/mypcbench/run-apps.sh up`).",
+            err=True,
+        )
+
+
 def _run_kvm(model, work_items, run_dir, *, fleet_size, host, base_volume, ram_gb, vcpu,
-             ssh_key=None, ssh_login=None, disk_mode="overlay", resolved_env=None):
+             ssh_key=None, ssh_login=None, disk_mode="overlay", resolved_env=None,
+             app_tunnel_ports=()):
     """Boot a KVM fleet, run all (task, trial) items concurrently across it, tear down."""
     from concurrent.futures import ThreadPoolExecutor
 
     from benchmark.env.kvm import KvmConfig, KvmFleet
 
     cfg_kwargs = dict(fleet_size=fleet_size, host=host, ram_gb=ram_gb, vcpu=vcpu,
-                      disk_mode=disk_mode)
+                      disk_mode=disk_mode, app_tunnel_ports=app_tunnel_ports)
     if resolved_env is not None:
         # An env package supplies the os-base (as the base_volume source) and, optionally,
         # the top +apps layer the instance overlay backs onto. Takes the place of

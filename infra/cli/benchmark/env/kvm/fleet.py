@@ -7,7 +7,9 @@ but in-process and with a thread-safe checkout queue.
 from __future__ import annotations
 
 import queue
+import subprocess
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
@@ -41,6 +43,9 @@ class FleetSlot:
     web_port: int
     volume_path: str
     fleet: "KvmFleet | None" = field(default=None, repr=False, compare=False)
+    # Live `ssh -R` reverse-tunnel process (app_tunnel_ports), opened at boot and
+    # killed at teardown. None when the feature is off. Not part of equality/repr.
+    tunnel_proc: "subprocess.Popen | None" = field(default=None, repr=False, compare=False)
 
     @property
     def host(self) -> str:
@@ -134,12 +139,69 @@ class KvmFleet:
         if not ready_slots:
             self.teardown()
             raise RuntimeError("fleet boot failed: no guests reached SSH")
+        # Optional app reverse-tunnels (e.g. MyPCBench apps): open one per ready guest
+        # BEFORE the slots go on the available queue, so the first task already sees
+        # localhost:<port> wired to the host sidecar.
+        if cfg.app_tunnel_ports:
+            for slot in ready_slots:
+                self._open_app_tunnel(slot)
         for slot in ready_slots:
             self._available.put(slot)
         self.slots = ready_slots
         self._booted = True
         log.info(f"[fleet] ready: {len(ready_slots)}/{n} guest(s) usable")
         return self
+
+    def _open_app_tunnel(self, slot: FleetSlot) -> None:
+        """Open an `ssh -R` reverse tunnel: guest localhost:<port> -> host localhost:<port>.
+
+        One `-R` per configured app port. The host side is wherever this process runs
+        (the box hosting the apps sidecar). Best-effort: a failure is logged, not fatal —
+        tasks that need the apps will simply fail to reach them and grade accordingly.
+        """
+        cfg = self.cfg
+        ports = cfg.app_tunnel_ports
+        argv = [
+            "ssh", "-i", str(cfg.ssh_key), "-p", str(slot.ssh_port), "-N",
+            "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
+            "-o", "BatchMode=yes", "-o", "ExitOnForwardFailure=yes",
+            "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=4",
+        ]
+        for p in ports:
+            argv += ["-R", f"{p}:localhost:{p}"]
+        argv.append(f"{cfg.ssh_user}@{cfg.host}")
+        try:
+            slot.tunnel_proc = subprocess.Popen(
+                argv, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+            time.sleep(1.0)  # let the forwards bind before the first task hits them
+            if slot.tunnel_proc.poll() is not None:
+                log.warning(
+                    f"[fleet] {slot.container_name} app tunnel exited immediately "
+                    f"(rc={slot.tunnel_proc.returncode}); is the apps sidecar up on the host?"
+                )
+            else:
+                log.info(
+                    f"[fleet] {slot.container_name} app tunnel up: guest "
+                    f"localhost:{ports[0]}..{ports[-1]} -> host"
+                )
+        except Exception as e:  # noqa: BLE001 — tunnel is best-effort
+            log.warning(f"[fleet] {slot.container_name} app tunnel failed: {e}")
+
+    def _close_app_tunnel(self, slot: FleetSlot) -> None:
+        proc = slot.tunnel_proc
+        if proc is None:
+            return
+        try:
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+        except Exception as e:  # noqa: BLE001 — cleanup, best-effort
+            log.info(f"[fleet] {slot.container_name} tunnel close warning: {e}")
+        finally:
+            slot.tunnel_proc = None
 
     def acquire(self, timeout: float | None = None) -> FleetSlot:
         return self._available.get(timeout=timeout)
@@ -154,6 +216,7 @@ class KvmFleet:
 
     def teardown(self, *, remove_clones: bool = True) -> None:
         for slot in self.slots:
+            self._close_app_tunnel(slot)
             self.host.remove_container(slot.container_name)
             if remove_clones:
                 self.host.remove_volume(slot.volume_path)
