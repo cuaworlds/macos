@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Loading } from '../components/Loading'
 import { listTasks } from '../lib/api'
-import { maxScoreOf, type TaskDef } from '../lib/trajectory'
+import { cmpIdDesc, maxScoreOf, type TaskDef } from '../lib/trajectory'
 
 const enc = encodeURIComponent
 
@@ -17,14 +17,9 @@ export default function TasksList() {
       .catch((e) => setErr(String(e)))
   }, [])
 
-  // Stable order: by category, then by id.
+  // Default order: by task id, descending (newest first); numeric-aware.
   const sorted = useMemo(
-    () =>
-      tasks
-        ? [...tasks].sort(
-            (a, b) => a.category.localeCompare(b.category) || a.task_id.localeCompare(b.task_id),
-          )
-        : null,
+    () => (tasks ? [...tasks].sort((a, b) => cmpIdDesc(a.task_id, b.task_id)) : null),
     [tasks],
   )
 

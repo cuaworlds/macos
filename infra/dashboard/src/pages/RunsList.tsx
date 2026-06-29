@@ -37,7 +37,7 @@ export default function RunsList() {
           <thead>
             <tr>
               <th>Run ID</th>
-              <th>Tasks</th>
+              <th>Rollouts</th>
               <th>Modified</th>
             </tr>
           </thead>
@@ -60,7 +60,7 @@ export default function RunsList() {
                     <code>{r.run_id}</code>
                   </Link>
                 </td>
-                <td>{r.n_tasks}</td>
+                <td>{r.n_rollouts}</td>
                 <td className="muted">
                   {new Date(r.mtime).toLocaleString()}
                 </td>

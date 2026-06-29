@@ -170,6 +170,97 @@ pre {
   background: var(--panel);
 }
 
+/* --- rollout page: left rail of the run's rollouts + main viewer --- */
+.rollout-page {
+  max-width: 1500px;
+}
+.rollout-shell {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.rollout-main {
+  min-width: 0;
+}
+.rollout-rail {
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.rail-head {
+  padding: 10px 12px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-2);
+}
+.rail-list {
+  overflow-y: auto;
+  padding: 4px;
+}
+.rail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--text);
+}
+.rail-item:hover {
+  background: var(--panel-2);
+}
+.rail-item.active {
+  background: var(--accent-bg);
+  outline: 1px solid rgba(139, 143, 249, 0.4);
+}
+.rail-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border);
+}
+.rail-dot.pass {
+  background: var(--green);
+}
+.rail-dot.partial {
+  background: var(--amber);
+}
+.rail-dot.zero {
+  background: var(--red);
+}
+.rail-id {
+  flex: 1 1 auto;
+  font-size: 13px;
+}
+.rail-trial {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.rail-score {
+  font-family: var(--mono);
+  font-size: 13px;
+}
+@media (max-width: 900px) {
+  .rollout-shell {
+    grid-template-columns: 1fr;
+  }
+  .rollout-rail {
+    position: static;
+    max-height: 320px;
+  }
+}
+
 .viewer {
   display: grid;
   grid-template-columns: 1fr 340px;

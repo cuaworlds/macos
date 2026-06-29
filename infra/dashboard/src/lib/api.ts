@@ -174,7 +174,7 @@ export const inviteUser = (input: InviteUserInput) =>
 
 // -- backend shapes (only the fields we read) ------------------------------
 
-type BackendRun = { id: number; total_tasks: number; created_at: string }
+type BackendRun = { id: number; total_tasks: number; total_rollouts?: number; created_at: string }
 type BackendRollout = {
   id: number
   task_id: number
@@ -203,7 +203,8 @@ type ArtifactManifest = {
 
 const runToInfo = (r: BackendRun): RunInfo => ({
   run_id: String(r.id),
-  n_tasks: r.total_tasks,
+  // total_rollouts is finalized at end of push; fall back to task count for in-flight runs.
+  n_rollouts: r.total_rollouts ?? r.total_tasks,
   mtime: Date.parse(r.created_at),
   has_summary: true,
 })

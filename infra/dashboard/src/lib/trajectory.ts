@@ -54,7 +54,7 @@ export type TaskResult = {
 
 export type RunInfo = {
   run_id: string
-  n_tasks: number
+  n_rollouts: number
   mtime: number
   has_summary: boolean
 }
@@ -172,6 +172,14 @@ export function flattenFrames(steps: StepRecord[]): Frame[] {
 /** Strip a trailing `__tNN` trial suffix to recover the base task id. */
 export function baseTaskId(id: string): string {
   return id.replace(/__t\d+$/, '')
+}
+
+/** Descending id comparator; numeric when both ids are numbers, else lexicographic. */
+export function cmpIdDesc(a: string, b: string): number {
+  const na = Number(a)
+  const nb = Number(b)
+  if (Number.isFinite(na) && Number.isFinite(nb)) return nb - na
+  return b.localeCompare(a)
 }
 
 /** A passing trial reaches the run's pass threshold (default: full credit). */

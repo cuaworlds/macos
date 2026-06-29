@@ -93,7 +93,7 @@ export default function RunDetail() {
       </div>
 
       <div className="run-head">
-        <h1 className="h1">Tasks</h1>
+        <h1 className="h1">Rollouts</h1>
         {tasks && tasks.length > 0 && (
           <div className="run-meta muted">
             {groups.length} task{groups.length === 1 ? '' : 's'}
@@ -121,7 +121,7 @@ export default function RunDetail() {
       {err && <div className="empty">Failed to load: {err}</div>}
       {!err && tasks === null && <Loading />}
       {!err && tasks && tasks.length === 0 && (
-        <div className="empty">No tasks in this run.</div>
+        <div className="empty">No rollouts in this run.</div>
       )}
 
       {/* Grouped: one row per task with its trial distribution. */}
@@ -195,7 +195,7 @@ export default function RunDetail() {
         <table className="table">
           <thead>
             <tr>
-              <th>Task</th>
+              <th>Rollout</th>
               <th>Model</th>
               <th>Status</th>
               <th>Score</th>

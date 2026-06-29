@@ -91,20 +91,20 @@ async function listRuns(root: string) {
         const runDir = path.join(root, d.name)
         const stat = await fs.stat(runDir)
 
-        let nTasks = 0
+        let nRollouts = 0
         let summary: unknown = null
         try {
           const summaryRaw = await fs.readFile(path.join(runDir, 'summary.json'), 'utf8')
           summary = JSON.parse(summaryRaw)
-          if (Array.isArray(summary)) nTasks = summary.length
+          if (Array.isArray(summary)) nRollouts = summary.length
         } catch {
           const subdirs = await fs.readdir(runDir, { withFileTypes: true })
-          nTasks = subdirs.filter((s) => s.isDirectory()).length
+          nRollouts = subdirs.filter((s) => s.isDirectory()).length
         }
 
         return {
           run_id: d.name,
-          n_tasks: nTasks,
+          n_rollouts: nRollouts,
           mtime: stat.mtimeMs,
           has_summary: summary !== null,
         }

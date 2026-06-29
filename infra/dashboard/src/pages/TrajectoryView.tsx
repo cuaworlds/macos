@@ -2,12 +2,16 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Loading } from '../components/Loading'
 import Scrubber from '../components/Scrubber'
-import { getRollout, getTaskDef, getTrajectory } from '../lib/api'
+import { getRollout, getTaskDef, getTrajectory, listRollouts } from '../lib/api'
 import {
   actionMarkers,
+  baseTaskId,
+  cmpIdDesc,
   DISPLAY_H,
   DISPLAY_W,
   flattenFrames,
+  groupTasks,
+  scoreTone,
   statusPill,
   type GradeLogEntry,
   type StepRecord,
@@ -23,6 +27,7 @@ export default function TrajectoryView() {
   const [screens, setScreens] = useState<Record<string, string>>({})
   const [result, setResult] = useState<TaskResult | null>(null)
   const [taskDef, setTaskDef] = useState<TaskDef | null>(null)
+  const [rollouts, setRollouts] = useState<TaskResult[] | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [frameIdx, setFrameIdx] = useState(0)
   const [playing, setPlaying] = useState(false)
@@ -62,6 +67,33 @@ export default function TrajectoryView() {
       cancelled = true
     }
   }, [result?.task_def_id])
+
+  // Sidebar: all rollouts in this run. Keyed on runId so it survives navigating
+  // between rollouts of the same run.
+  useEffect(() => {
+    if (!runId) return
+    let cancelled = false
+    listRollouts(runId)
+      .then((rs) => !cancelled && setRollouts(rs))
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [runId])
+
+  // Flatten to one rail row per rollout, ordered so a task's trials sit together.
+  const railItems = useMemo(() => {
+    if (!rollouts) return []
+    const groups = groupTasks(rollouts)
+    groups.sort((a, b) => cmpIdDesc(a.baseId, b.baseId))
+    return groups.flatMap((g) =>
+      g.trials.map((t, i) => ({ t, group: g, firstOfGroup: i === 0 })),
+    )
+  }, [rollouts])
+  const railMultiTrial = useMemo(
+    () => railItems.some((it) => it.group.nTrials > 1),
+    [railItems],
+  )
 
   const shotUrl = (file: string) => (file ? (screens[file] ?? '') : '')
 
@@ -109,7 +141,7 @@ export default function TrajectoryView() {
     result?.score && result.score > 0 ? 'pill green' : 'pill red'
 
   return (
-    <div className="page">
+    <div className="page rollout-page">
       <div className="crumbs">
         <Link to="/">CUA Worlds</Link>
         <span className="sep">/</span>
@@ -138,6 +170,38 @@ export default function TrajectoryView() {
           </>
         )}
       </div>
+
+      <div className="rollout-shell">
+        <aside className="rollout-rail">
+          <div className="rail-head">
+            Rollouts
+            {rollouts && <span className="muted"> · {rollouts.length}</span>}
+          </div>
+          <nav className="rail-list">
+            {railItems.map(({ t, firstOfGroup }) => {
+              const tone = scoreTone(t.score, t.max_score)
+              const active = t.task_id === taskId
+              return (
+                <Link
+                  key={t.task_id}
+                  to={`/r/${encodeURIComponent(runId)}/t/${encodeURIComponent(t.task_id)}`}
+                  className={`rail-item${active ? ' active' : ''}`}
+                  aria-current={active ? 'true' : undefined}
+                >
+                  <span className={`rail-dot ${tone}`} />
+                  <code className="rail-id">
+                    {firstOfGroup ? baseTaskId(t.task_id).slice(0, 8) : ''}
+                  </code>
+                  {railMultiTrial && (
+                    <span className="rail-trial muted">t{(t.trial ?? 0) + 1}</span>
+                  )}
+                  <span className="rail-score muted">{t.score ?? '—'}</span>
+                </Link>
+              )
+            })}
+          </nav>
+        </aside>
+        <div className="rollout-main">
 
       {taskDef?.instruction && (
         <div className="card task-card">
@@ -290,6 +354,8 @@ export default function TrajectoryView() {
           </div>
         </>
       )}
+        </div>
+      </div>
     </div>
   )
 }
