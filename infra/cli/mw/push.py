@@ -165,6 +165,12 @@ def push_run_dir(
     base_ids = sorted({r.get("base_task_id") or r["task_id"] for r in results})
     manifest = ensure_tasks(client, load_tasks(ids=base_ids))
 
+    # Idempotent on session id: drop any prior run before recreating, so a retry
+    # after a partial push reconciles into one run instead of forking a new one.
+    for stale in client.runs_by_session(run_dir.name):
+        client.delete_run(stale["id"])
+        echo(f"replaced stale run #{stale['id']} for session {run_dir.name}")
+
     run = client.create_run(
         {
             "session_id": run_dir.name,

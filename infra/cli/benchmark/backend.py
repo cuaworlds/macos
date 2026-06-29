@@ -15,6 +15,9 @@ import httpx
 RETRY_STATUSES = {500, 502, 503, 504}
 MAX_ATTEMPTS = 3
 BACKOFF_S = 0.5
+# Artifact PUTs are large S3 uploads: generous write timeout, own retry.
+ARTIFACT_TIMEOUT = httpx.Timeout(180.0, connect=15.0)
+ARTIFACT_MAX_ATTEMPTS = 4
 
 
 class BackendError(Exception):
@@ -94,6 +97,15 @@ class BackendClient:
     def patch_run(self, run_id: int, payload: dict) -> dict:
         return self._request("PATCH", f"/runs/{run_id}", json=payload)
 
+    def runs_by_session(self, session_id: str) -> list[dict]:
+        """Return existing runs sharing this session id (newest first)."""
+        data = self._request("GET", "/runs", params={"session_id": session_id})
+        items = data.get("items", []) if isinstance(data, dict) else (data or [])
+        return sorted(items, key=lambda r: r.get("id", 0), reverse=True)
+
+    def delete_run(self, run_id: int) -> None:
+        self._request("DELETE", f"/runs/{run_id}")
+
     # -- rollouts ----------------------------------------------------------
 
     def create_rollout(self, payload: dict) -> dict:
@@ -112,18 +124,28 @@ class BackendClient:
         )
 
     def upload_artifact(self, upload_url: str, path: Path, content_type: str) -> None:
-        """PUT a file to a presigned S3 URL (no auth header; Content-Type must match)."""
-        try:
-            resp = httpx.put(
-                upload_url,
-                content=path.read_bytes(),
-                headers={"Content-Type": content_type},
-                timeout=self._http.timeout,
-            )
-        except httpx.HTTPError as exc:
-            raise BackendError(f"artifact upload failed: {exc}") from exc
-        if resp.status_code >= 400:
-            raise BackendError(f"artifact upload failed: {resp.status_code} {resp.text[:200]}")
+        """PUT a file to a presigned S3 URL, retrying transient failures."""
+        data = path.read_bytes()
+        last_exc: Exception | None = None
+        for attempt in range(1, ARTIFACT_MAX_ATTEMPTS + 1):
+            try:
+                resp = httpx.put(
+                    upload_url,
+                    content=data,
+                    headers={"Content-Type": content_type},
+                    timeout=ARTIFACT_TIMEOUT,
+                )
+            except httpx.HTTPError as exc:
+                last_exc = exc
+            else:
+                if resp.status_code in RETRY_STATUSES and attempt < ARTIFACT_MAX_ATTEMPTS:
+                    time.sleep(BACKOFF_S * attempt)
+                    continue
+                if resp.status_code >= 400:
+                    raise BackendError(f"artifact upload failed: {resp.status_code} {resp.text[:200]}")
+                return
+            time.sleep(BACKOFF_S * attempt)
+        raise BackendError(f"artifact upload failed after {ARTIFACT_MAX_ATTEMPTS} attempts: {last_exc}")
 
 
 def _detail(resp: httpx.Response, ctx: str) -> str:
