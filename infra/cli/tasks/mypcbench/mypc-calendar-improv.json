@@ -1,0 +1,10 @@
+{
+  "id": "mypc-calendar-improv",
+  "source": {"benchmark": "mypcbench", "app": "HooliCalendar", "port": 3017, "note": "real seeded app via apps-container + reverse tunnel; deterministic container grade"},
+  "task": {"en": "Open HooliCalendar, the calendar web app at http://localhost:3017 (it is already open in Safari and you are logged in). Create a new event titled \"Improv Night\" this Friday from 7:00 PM to 9:00 PM, then save it."},
+  "pre_command": {"en": "open -a Safari 'http://localhost:3017/'"},
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 5,
+  "grading_command": [],
+  "grading_script": "grade_container.py"
+}
