@@ -1,0 +1,28 @@
+{
+  "id": "e78b3fd2-da6e-440f-9dd3-b15aade8fc77",
+  "snapshot": {
+    "en": "snapshot_used_en"
+  },
+  "force_snapshot_recovery": true,
+  "task": {
+    "en": "In Safari, open Google Maps (maps.google.com). You may search to jump to the Eiffel Tower area, but then use the map itself - dragging to pan and scrolling to zoom - to center the view on the open lawn of the Champ de Mars park exactly halfway between the Eiffel Tower (at the north end) and the Ecole Militaire building (at the south end). It should be partway down the long rectangular park, on neither landmark, zoomed in to street level so the lawn fills the view. Make sure no place pin or place panel is selected - the map should show a plain location, not a specific named place. Leave that view open in the front Safari tab. Do not use any app other than Safari."
+  },
+  "pre_command": "UDB=\"$HOME/Library/Application Support/com.apple.TCC/TCC.db\"; sqlite3 \"$UDB\" \"INSERT OR REPLACE INTO access (service,client,client_type,auth_value,auth_reason,auth_version,csreq,indirect_object_identifier_type,indirect_object_identifier,flags) VALUES ('kTCCServiceAppleEvents','/usr/libexec/sshd-keygen-wrapper',1,2,3,1,NULL,0,'com.apple.Safari',0);\" 2>/dev/null; (sudo killall tccd 2>/dev/null; killall tccd 2>/dev/null); sleep 1; for A in \"/System/Applications/Utilities/Terminal.app\" \"/Applications/iTerm.app\" \"/Applications/iTerm2.app\" \"/System/Applications/Utilities/Script Editor.app\" \"/Applications/Utilities/Script Editor.app\" \"/Applications/Automator.app\" \"/System/Applications/Automator.app\" \"/System/Applications/Shortcuts.app\"; do [ -d \"$A/Contents/MacOS\" ] && (chmod 000 \"$A/Contents/MacOS\" 2>/dev/null || sudo chmod 000 \"$A/Contents/MacOS\" 2>/dev/null); done; osascript -e 'tell application \"Safari\" to quit' 2>/dev/null; killall Safari 2>/dev/null; sleep 3; HDB=\"$HOME/Library/Safari/History.db\"; sqlite3 \"$HDB\" \"DELETE FROM history_visits; DELETE FROM history_items;\" 2>/dev/null; sqlite3 \"$HDB\" \"PRAGMA wal_checkpoint(TRUNCATE);\" 2>/dev/null; defaults write com.apple.Safari ShowFullURLInSmartSearchField -bool true 2>/dev/null; open -a Safari \"about:blank\" 2>/dev/null; sleep 6; ",
+  "before_action_delay_seconds": 10,
+  "before_grading_delay_seconds": 30,
+  "grading_command": [
+    [
+      "killall Safari 2>/dev/null; sleep 3; HDB=\"$HOME/Library/Safari/History.db\"; URLS=$(sqlite3 \"$HDB\" \"SELECT url FROM history_items WHERE url LIKE '%/maps%@%';\" 2>/dev/null); echo \"$URLS\" | grep -oE '@-?[0-9.]+,-?[0-9.]+,[0-9.]+z' | awk -F'[@,z]' 'BEGIN{f=0} {if ($2>=48.8536 && $2<=48.8566 && $3>=2.2981 && $3<=2.3011 && $4>=17) f=1} END{if (f) print \"True\"; else print \"False\"}'",
+      70
+    ],
+    [
+      "HDB=\"$HOME/Library/Safari/History.db\"; URLS=$(sqlite3 \"$HDB\" \"SELECT url FROM history_items WHERE url LIKE '%/maps%@%';\" 2>/dev/null); echo \"$URLS\" | grep -oE '@-?[0-9.]+,-?[0-9.]+' | awk -F'[@,]' 'BEGIN{f=0} {if ($2>=48.8536 && $2<=48.8566 && $3>=2.2981 && $3<=2.3011) f=1} END{if (f) print \"True\"; else print \"False\"}'",
+      30
+    ]
+  ],
+  "source": {
+    "benchmark": "mypcbench",
+    "type": "gui_bound_action",
+    "note": "Browser-native CUA-necessity task. GUI Bound Action (forced spatial): the graded target is a non-POI point (midpoint of the Champ de Mars between the Eiffel Tower and Ecole Militaire) that search cannot resolve - so the agent must pan/zoom to a manually framed viewport at zoom>=17. The pan/zoom result lands in the Maps URL (@lat,lng,zoom); graded deterministically from Safari History.db (the live front-tab osascript URL proved unreliable across sequential runs). Real public site; no LLM judge."
+  }
+}

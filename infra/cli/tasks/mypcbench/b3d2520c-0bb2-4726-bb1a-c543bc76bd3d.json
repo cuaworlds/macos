@@ -1,0 +1,28 @@
+{
+  "id": "b3d2520c-0bb2-4726-bb1a-c543bc76bd3d",
+  "snapshot": {
+    "en": "snapshot_used_en"
+  },
+  "force_snapshot_recovery": true,
+  "task": {
+    "en": "A file named `membership.txt` is on the Desktop. Open it and read it to find Michael's Dinoco frequent-flyer number. Then in Reminders, create a single reminder in the default list titled exactly `FF: <number>`, where <number> is the actual frequent-flyer number from the file. Do not add any other reminders."
+  },
+  "pre_command": "mkdir -p \"$HOME/Desktop\"; printf 'Dinoco Airlines - Loyalty Profile\\nMember: Michael Scott\\nTier: Gold\\nFrequent Flyer Number: DNC-7741-2293\\nCustomer service: 1-800-555-0199\\nNote: do not share this number publicly.\\n' > \"$HOME/Desktop/membership.txt\"; for A in \"/System/Applications/Utilities/Terminal.app\" \"/Applications/iTerm.app\" \"/Applications/iTerm2.app\" \"/System/Applications/Utilities/Script Editor.app\" \"/Applications/Utilities/Script Editor.app\" \"/Applications/Automator.app\" \"/System/Applications/Automator.app\" \"/System/Applications/Shortcuts.app\"; do [ -d \"$A/Contents/MacOS\" ] && (chmod 000 \"$A/Contents/MacOS\" 2>/dev/null || sudo chmod 000 \"$A/Contents/MacOS\" 2>/dev/null); done; RDB=\"$HOME/Library/Group Containers/group.com.apple.reminders/Container_v1/Stores/Data-local.sqlite\"; open -gj -a Reminders 2>/dev/null; sleep 8; osascript -e 'tell application \"Reminders\" to quit' 2>/dev/null; killall Reminders 2>/dev/null; sleep 3; TCOL=$(sqlite3 \"$RDB\" \"SELECT name FROM pragma_table_info('ZREMCDREMINDER') WHERE name IN ('ZTITLE','ZNAME') LIMIT 1;\" 2>/dev/null); [ -n \"$TCOL\" ] && sqlite3 \"$RDB\" \"DELETE FROM ZREMCDREMINDER WHERE $TCOL LIKE 'FF:%';\" 2>/dev/null; sqlite3 \"$RDB\" \"PRAGMA wal_checkpoint(TRUNCATE);\" 2>/dev/null; sleep 1; ",
+  "before_action_delay_seconds": 10,
+  "before_grading_delay_seconds": 30,
+  "grading_command": [
+    [
+      "RDB=\"$HOME/Library/Group Containers/group.com.apple.reminders/Container_v1/Stores/Data-local.sqlite\"; killall Reminders 2>/dev/null; sleep 2; TCOL=$(sqlite3 \"$RDB\" \"SELECT name FROM pragma_table_info('ZREMCDREMINDER') WHERE name IN ('ZTITLE','ZNAME') LIMIT 1;\" 2>/dev/null); N=$(sqlite3 \"$RDB\" \"SELECT count(*) FROM ZREMCDREMINDER WHERE $TCOL LIKE 'FF:%' AND (ZMARKEDFORDELETION IS NULL OR ZMARKEDFORDELETION=0);\" 2>/dev/null); [ \"$N\" -ge 1 ] 2>/dev/null && echo True || echo False",
+      40
+    ],
+    [
+      "RDB=\"$HOME/Library/Group Containers/group.com.apple.reminders/Container_v1/Stores/Data-local.sqlite\"; killall Reminders 2>/dev/null; sleep 2; TCOL=$(sqlite3 \"$RDB\" \"SELECT name FROM pragma_table_info('ZREMCDREMINDER') WHERE name IN ('ZTITLE','ZNAME') LIMIT 1;\" 2>/dev/null); N=$(sqlite3 \"$RDB\" \"SELECT count(*) FROM ZREMCDREMINDER WHERE $TCOL LIKE '%DNC-7741-2293%' AND (ZMARKEDFORDELETION IS NULL OR ZMARKEDFORDELETION=0);\" 2>/dev/null); [ \"$N\" -ge 1 ] 2>/dev/null && echo True || echo False",
+      60
+    ]
+  ],
+  "source": {
+    "benchmark": "mypcbench",
+    "type": "personal_lookup",
+    "note": "Re-grounded onto native macOS apps; concept port, not a literal import."
+  }
+}

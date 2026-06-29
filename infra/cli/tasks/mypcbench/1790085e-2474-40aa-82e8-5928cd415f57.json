@@ -1,0 +1,28 @@
+{
+  "id": "1790085e-2474-40aa-82e8-5928cd415f57",
+  "snapshot": {
+    "en": "snapshot_used_en"
+  },
+  "force_snapshot_recovery": true,
+  "task": {
+    "en": "In Safari, open Google Maps (maps.google.com) and bring Times Square in New York City into the center of the view, zoomed in closely enough that Times Square and its immediately surrounding streets fill the map. Leave that map view open in the front Safari tab. Do not use any app other than Safari."
+  },
+  "pre_command": "UDB=\"$HOME/Library/Application Support/com.apple.TCC/TCC.db\"; sqlite3 \"$UDB\" \"INSERT OR REPLACE INTO access (service,client,client_type,auth_value,auth_reason,auth_version,csreq,indirect_object_identifier_type,indirect_object_identifier,flags) VALUES ('kTCCServiceAppleEvents','/usr/libexec/sshd-keygen-wrapper',1,2,3,1,NULL,0,'com.apple.Safari',0);\" 2>/dev/null; (sudo killall tccd 2>/dev/null; killall tccd 2>/dev/null); sleep 1; for A in \"/System/Applications/Utilities/Terminal.app\" \"/Applications/iTerm.app\" \"/Applications/iTerm2.app\" \"/System/Applications/Utilities/Script Editor.app\" \"/Applications/Utilities/Script Editor.app\" \"/Applications/Automator.app\" \"/System/Applications/Automator.app\" \"/System/Applications/Shortcuts.app\"; do [ -d \"$A/Contents/MacOS\" ] && (chmod 000 \"$A/Contents/MacOS\" 2>/dev/null || sudo chmod 000 \"$A/Contents/MacOS\" 2>/dev/null); done; osascript -e 'tell application \"Safari\" to quit' 2>/dev/null; killall Safari 2>/dev/null; sleep 3; HDB=\"$HOME/Library/Safari/History.db\"; sqlite3 \"$HDB\" \"DELETE FROM history_visits; DELETE FROM history_items;\" 2>/dev/null; sqlite3 \"$HDB\" \"PRAGMA wal_checkpoint(TRUNCATE);\" 2>/dev/null; defaults write com.apple.Safari ShowFullURLInSmartSearchField -bool true 2>/dev/null; open -a Safari \"about:blank\" 2>/dev/null; sleep 6; ",
+  "before_action_delay_seconds": 10,
+  "before_grading_delay_seconds": 30,
+  "grading_command": [
+    [
+      "killall Safari 2>/dev/null; sleep 3; HDB=\"$HOME/Library/Safari/History.db\"; URLS=$(sqlite3 \"$HDB\" \"SELECT url FROM history_items WHERE url LIKE '%/maps%@%';\" 2>/dev/null); echo \"$URLS\" | grep -oE '@-?[0-9.]+,-?[0-9.]+,[0-9.]+z' | awk -F'[@,z]' 'BEGIN{f=0} {if ($2>=40.7550 && $2<=40.7610 && $3>=-73.9890 && $3<=-73.9820 && $4>=15) f=1} END{if (f) print \"True\"; else print \"False\"}'",
+      70
+    ],
+    [
+      "HDB=\"$HOME/Library/Safari/History.db\"; URLS=$(sqlite3 \"$HDB\" \"SELECT url FROM history_items WHERE url LIKE '%/maps%@%';\" 2>/dev/null); echo \"$URLS\" | grep -oE '@-?[0-9.]+,-?[0-9.]+' | awk -F'[@,]' 'BEGIN{f=0} {if ($2>=40.7550 && $2<=40.7610 && $3>=-73.9890 && $3<=-73.9820) f=1} END{if (f) print \"True\"; else print \"False\"}'",
+      30
+    ]
+  ],
+  "source": {
+    "benchmark": "mypcbench",
+    "type": "gui_bound_action",
+    "note": "Browser-native CUA-necessity task. GUI Bound Action (search-assisted floor): the agent may search to reach Times Square, but must frame and zoom the viewport; the result lands in the Maps URL (@lat,lng,zoom). Easier counterpart to the forced-spatial Eiffel task, for a difficulty gradient. Graded via front-tab URL + Safari History.db. Real public site; no LLM judge."
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "id": "faed6a3b-d0ea-409f-a0ae-aa01c3f4cb20",
+  "snapshot": {
+    "en": "snapshot_used_en"
+  },
+  "force_snapshot_recovery": true,
+  "task": {
+    "en": "Two files are on the Desktop: `invited.txt` (everyone invited to the offsite) and `rsvped.txt` (everyone who has already RSVP'd). Open both. Then in Notes, create a single new note titled exactly `Awaiting RSVP` whose body lists, one name per line, each person who was invited but has NOT yet RSVP'd. Do not add any other notes."
+  },
+  "pre_command": "UDB=\"$HOME/Library/Application Support/com.apple.TCC/TCC.db\"; sqlite3 \"$UDB\" \"INSERT OR REPLACE INTO access (service,client,client_type,auth_value,auth_reason,auth_version,csreq,indirect_object_identifier_type,indirect_object_identifier,flags) VALUES ('kTCCServiceAppleEvents','/usr/libexec/sshd-keygen-wrapper',1,2,3,1,NULL,0,'com.apple.Notes',0);\" 2>/dev/null; (sudo killall tccd 2>/dev/null; killall tccd 2>/dev/null); sleep 1; mkdir -p \"$HOME/Desktop\"; printf 'Jim Halpert\\nPam Beesly\\nDwight Schrute\\nAngela Martin\\nKevin Malone\\nOscar Martinez\\n' > \"$HOME/Desktop/invited.txt\"; mkdir -p \"$HOME/Desktop\"; printf 'Pam Beesly\\nKevin Malone\\nOscar Martinez\\nJim Halpert\\n' > \"$HOME/Desktop/rsvped.txt\"; for A in \"/System/Applications/Utilities/Terminal.app\" \"/Applications/iTerm.app\" \"/Applications/iTerm2.app\" \"/System/Applications/Utilities/Script Editor.app\" \"/Applications/Utilities/Script Editor.app\" \"/Applications/Automator.app\" \"/System/Applications/Automator.app\" \"/System/Applications/Shortcuts.app\"; do [ -d \"$A/Contents/MacOS\" ] && (chmod 000 \"$A/Contents/MacOS\" 2>/dev/null || sudo chmod 000 \"$A/Contents/MacOS\" 2>/dev/null); done; osascript -e 'tell application \"Notes\" to delete every note' -e 'tell application \"Notes\" to delete every note in folder \"Recently Deleted\"' -e 'tell application \"Notes\" to quit' 2>/dev/null; sleep 1; ",
+  "before_action_delay_seconds": 10,
+  "before_grading_delay_seconds": 30,
+  "grading_command": [
+    [
+      "osascript -e 'tell application \"Notes\" to get name of every note' 2>/dev/null | grep -qF 'Awaiting RSVP' && echo True || echo False",
+      10
+    ],
+    [
+      "B=$(osascript -e 'tell application \"Notes\" to get body of note \"Awaiting RSVP\"' 2>/dev/null); echo \"$B\" | grep -qF 'Dwight Schrute' && echo True || echo False",
+      25
+    ],
+    [
+      "B=$(osascript -e 'tell application \"Notes\" to get body of note \"Awaiting RSVP\"' 2>/dev/null); echo \"$B\" | grep -qF 'Angela Martin' && echo True || echo False",
+      25
+    ],
+    [
+      "B=$(osascript -e 'tell application \"Notes\" to get body of note \"Awaiting RSVP\"' 2>/dev/null); if [ -n \"$B\" ] && ! echo \"$B\" | grep -qiE 'Pam Beesly|Kevin Malone|Oscar Martinez|Jim Halpert'; then echo True; else echo False; fi",
+      40
+    ]
+  ],
+  "source": {
+    "benchmark": "mypcbench",
+    "type": "cross_source_reconciliation",
+    "note": "Re-grounded onto native macOS apps; concept port, not a literal import."
+  }
+}
