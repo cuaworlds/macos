@@ -1,0 +1,19 @@
+{
+  "id": "mypc-sprintboard-priority-urgent-playlist",
+  "source": {
+    "benchmark": "mypcbench",
+    "app": "SprintBoard",
+    "port": 3013,
+    "note": "real seeded app via apps-container + reverse tunnel; deterministic container grade"
+  },
+  "task": {
+    "en": "Open SprintBoard, the issue-tracking app at http://localhost:3013 (it is already open in Safari and you are logged in). Find the task titled 'Confirm Dundies playlist with Darryl' (TMIQ-6) and change its priority to Urgent."
+  },
+  "pre_command": {
+    "en": "open -a Safari 'http://localhost:3013/'"
+  },
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 5,
+  "grading_command": [],
+  "grading_script": "grade_container.py"
+}

@@ -1,0 +1,19 @@
+{
+  "id": "mypc-etaxi-rate-alfredos-ride",
+  "source": {
+    "benchmark": "mypcbench",
+    "app": "eTaxi",
+    "port": 3006,
+    "note": "real seeded app via apps-container + reverse tunnel; deterministic container grade"
+  },
+  "task": {
+    "en": "Open eTaxi, the rideshare app at http://localhost:3006 (it is already open in Safari and you are logged in). In your ride history, find your completed trip on January 7, 2026 to 'Alfredo's Pizza Cafe, 2902 Birney Ave' (driver Carlos Mendez) and rate that ride 5 stars with the comment 'Smooth ride to Alfredos'."
+  },
+  "pre_command": {
+    "en": "open -a Safari 'http://localhost:3006/'"
+  },
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 5,
+  "grading_command": [],
+  "grading_script": "grade_container.py"
+}

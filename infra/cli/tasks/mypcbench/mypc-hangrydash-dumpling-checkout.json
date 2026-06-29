@@ -1,0 +1,19 @@
+{
+  "id": "mypc-hangrydash-dumpling-checkout",
+  "source": {
+    "benchmark": "mypcbench",
+    "app": "HangryDash",
+    "port": 3007,
+    "note": "real seeded app via apps-container + reverse tunnel; deterministic container grade"
+  },
+  "task": {
+    "en": "Open HangryDash, the food delivery app at http://localhost:3007 (it is already open in Safari and you are logged in). Place a delivery order from the Dumpling Home restaurant: add 2 orders of the Crab Soup Dumplings to your cart, then go through checkout and place the order (use your default delivery address and saved card)."
+  },
+  "pre_command": {
+    "en": "open -a Safari 'http://localhost:3007/'"
+  },
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 5,
+  "grading_command": [],
+  "grading_script": "grade_container.py"
+}

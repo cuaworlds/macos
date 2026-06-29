@@ -1,0 +1,19 @@
+{
+  "id": "mypc-dinoco-checkin-dn0991",
+  "source": {
+    "benchmark": "mypcbench",
+    "app": "Dinoco Airlines",
+    "port": 3011,
+    "note": "real seeded app via apps-container + reverse tunnel; deterministic container grade"
+  },
+  "task": {
+    "en": "Open Dinoco Airlines at http://localhost:3011 (it is already open in Safari and you are logged in). Complete online check-in for your upcoming flight DN0991 from Scranton (AVP) to Philadelphia (PHL), confirmation DN-CKW001, departing today at 6:00 PM. Check in so your boarding pass is issued."
+  },
+  "pre_command": {
+    "en": "open -a Safari 'http://localhost:3011/'"
+  },
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 5,
+  "grading_command": [],
+  "grading_script": "grade_container.py"
+}

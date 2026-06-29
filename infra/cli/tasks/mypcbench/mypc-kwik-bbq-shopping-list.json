@@ -1,0 +1,19 @@
+{
+  "id": "mypc-kwik-bbq-shopping-list",
+  "source": {
+    "benchmark": "mypcbench",
+    "app": "Kwik-E-Mart",
+    "port": 3009,
+    "note": "real seeded app via apps-container + reverse tunnel; deterministic container grade"
+  },
+  "task": {
+    "en": "Open Kwik-E-Mart, the grocery delivery app at http://localhost:3009 (it is already open in Safari and you are logged in). Create a new shopping list named \"Memorial Day BBQ Run\" and add these three items to it: Hamburger Buns 8ct (quantity 3), Ground Beef 80/20 (2 lb) (quantity 2), and Dill Pickle Spears (quantity 1)."
+  },
+  "pre_command": {
+    "en": "open -a Safari 'http://localhost:3009/'"
+  },
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 5,
+  "grading_command": [],
+  "grading_script": "grade_container.py"
+}

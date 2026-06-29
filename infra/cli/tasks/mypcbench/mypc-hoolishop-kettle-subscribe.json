@@ -1,0 +1,19 @@
+{
+  "id": "mypc-hoolishop-kettle-subscribe",
+  "source": {
+    "benchmark": "mypcbench",
+    "app": "HooliShop",
+    "port": 3010,
+    "note": "real seeded app via apps-container + reverse tunnel; deterministic container grade"
+  },
+  "task": {
+    "en": "Open HooliShop, the online shopping app at http://localhost:3010 (it is already open in Safari and you are logged in). Find the Electric Kettle 1.7L product and set up a Subscribe & Save subscription for it with a monthly delivery frequency."
+  },
+  "pre_command": {
+    "en": "open -a Safari 'http://localhost:3010/'"
+  },
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 5,
+  "grading_command": [],
+  "grading_script": "grade_container.py"
+}

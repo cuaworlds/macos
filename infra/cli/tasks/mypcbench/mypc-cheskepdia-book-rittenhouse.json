@@ -1,0 +1,19 @@
+{
+  "id": "mypc-cheskepdia-book-rittenhouse",
+  "source": {
+    "benchmark": "mypcbench",
+    "app": "Cheskepdia",
+    "port": 3012,
+    "note": "real seeded app via apps-container + reverse tunnel; deterministic container grade"
+  },
+  "task": {
+    "en": "Open Cheskepdia, the vacation-stay booking app at http://localhost:3012 (it is already open in Safari and you are logged in). Book the listing 'Classic 1BR in Rittenhouse Square' in Philadelphia for 2 guests, checking in August 10, 2026 and checking out August 14, 2026. Complete the reservation."
+  },
+  "pre_command": {
+    "en": "open -a Safari 'http://localhost:3012/'"
+  },
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 5,
+  "grading_command": [],
+  "grading_script": "grade_container.py"
+}

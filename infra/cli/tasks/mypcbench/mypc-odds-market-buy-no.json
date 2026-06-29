@@ -1,0 +1,19 @@
+{
+  "id": "mypc-odds-market-buy-no",
+  "source": {
+    "benchmark": "mypcbench",
+    "app": "OddsMarket",
+    "port": 3003,
+    "note": "real seeded app via apps-container + reverse tunnel; deterministic container grade"
+  },
+  "task": {
+    "en": "Open OddsMarket, the prediction-market trading app at http://localhost:3003 (it is already open in Safari and you are logged in). Open the market 'Will TikTok be banned or forced to divest in the U.S. by year-end?' (ticker TECH-TIKTOK-BAN-2026), and buy 29 NO shares at the market price, then confirm the trade."
+  },
+  "pre_command": {
+    "en": "open -a Safari 'http://localhost:3003/'"
+  },
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 5,
+  "grading_command": [],
+  "grading_script": "grade_container.py"
+}

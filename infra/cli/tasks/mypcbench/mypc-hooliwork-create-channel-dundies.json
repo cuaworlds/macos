@@ -1,0 +1,19 @@
+{
+  "id": "mypc-hooliwork-create-channel-dundies",
+  "source": {
+    "benchmark": "mypcbench",
+    "app": "HooliWork",
+    "port": 3005,
+    "note": "real seeded app via apps-container + reverse tunnel; deterministic container grade"
+  },
+  "task": {
+    "en": "Open HooliWork, the Slack-like team chat app at http://localhost:3005 (it is already open in Safari and you are logged in). Create a new public channel named exactly \"dundie-awards-2026\"."
+  },
+  "pre_command": {
+    "en": "open -a Safari 'http://localhost:3005/'"
+  },
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 5,
+  "grading_command": [],
+  "grading_script": "grade_container.py"
+}

@@ -68,4 +68,4 @@ To add a task: drop a `*.json` into `infra/cli/tasks/mypcbench/` (instruction + 
 
 - Analysis/read tasks (~72) need an answer-judge (Claude); deliberately skipped for now.
 - LibreOffice/Files tasks need a home-dir seed and an office suite inside the guest.
-- The per-VM app DB persists across runs, so `reset` before a scored run; on a 7 GB box keep the fleet at size 1.
+- The per-VM app DB persists across runs (app writes are not auto-cleaned), so `reset` before a scored run; on a 7 GB box keep the fleet at size 1. Note: `reset` recreates the container from the pristine image — that is the only true wipe. An in-place generator reseed is an idempotent upsert and leaves prior run rows behind, which would falsely pass create/flag graders.

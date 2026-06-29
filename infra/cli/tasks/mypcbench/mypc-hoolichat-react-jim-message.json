@@ -1,0 +1,19 @@
+{
+  "id": "mypc-hoolichat-react-jim-message",
+  "source": {
+    "benchmark": "mypcbench",
+    "app": "HooliChat",
+    "port": 3004,
+    "note": "real seeded app via apps-container + reverse tunnel; deterministic container grade"
+  },
+  "task": {
+    "en": "Open HooliChat, the iMessage-like messaging app at http://localhost:3004 (it is already open in Safari and you are logged in). Open your direct-message conversation with Jim Halpert, find his message that reads exactly \"can you talk?\", and add a heart reaction to that specific message."
+  },
+  "pre_command": {
+    "en": "open -a Safari 'http://localhost:3004/'"
+  },
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 5,
+  "grading_command": [],
+  "grading_script": "grade_container.py"
+}

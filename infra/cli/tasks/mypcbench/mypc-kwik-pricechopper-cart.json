@@ -1,0 +1,19 @@
+{
+  "id": "mypc-kwik-pricechopper-cart",
+  "source": {
+    "benchmark": "mypcbench",
+    "app": "Kwik-E-Mart",
+    "port": 3009,
+    "note": "real seeded app via apps-container + reverse tunnel; deterministic container grade"
+  },
+  "task": {
+    "en": "Open Kwik-E-Mart, the grocery delivery app at http://localhost:3009 (it is already open in Safari and you are logged in). Shop at the Price Chopper store and add both of these to your cart: 6 Kombucha (12oz) and 2 French Green Lentils."
+  },
+  "pre_command": {
+    "en": "open -a Safari 'http://localhost:3009/'"
+  },
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 5,
+  "grading_command": [],
+  "grading_script": "grade_container.py"
+}

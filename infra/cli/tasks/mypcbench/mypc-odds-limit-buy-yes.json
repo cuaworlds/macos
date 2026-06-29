@@ -1,0 +1,19 @@
+{
+  "id": "mypc-odds-limit-buy-yes",
+  "source": {
+    "benchmark": "mypcbench",
+    "app": "OddsMarket",
+    "port": 3003,
+    "note": "real seeded app via apps-container + reverse tunnel; deterministic container grade"
+  },
+  "task": {
+    "en": "Open OddsMarket, the prediction-market trading app at http://localhost:3003 (it is already open in Safari and you are logged in). Open the market 'Will Bitcoin trade above $150,000 by year-end?' (ticker CRYPTO-BTC-150K-2026), and place a LIMIT BUY order for 17 YES shares with a limit price of 40 cents, then confirm the order."
+  },
+  "pre_command": {
+    "en": "open -a Safari 'http://localhost:3003/'"
+  },
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 5,
+  "grading_command": [],
+  "grading_script": "grade_container.py"
+}

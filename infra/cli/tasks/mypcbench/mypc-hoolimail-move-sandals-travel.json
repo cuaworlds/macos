@@ -1,0 +1,19 @@
+{
+  "id": "mypc-hoolimail-move-sandals-travel",
+  "source": {
+    "benchmark": "mypcbench",
+    "app": "HooliMail",
+    "port": 3016,
+    "note": "real seeded app via apps-container + reverse tunnel; deterministic container grade"
+  },
+  "task": {
+    "en": "Open HooliMail, the email app at http://localhost:3016 (it is already open in Safari and you are logged in). Find the inbox email with the subject 'Your Sandals Montego Bay reservation is confirmed (SM-88431)' and move it into the Travel folder/mailbox."
+  },
+  "pre_command": {
+    "en": "open -a Safari 'http://localhost:3016/'"
+  },
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 5,
+  "grading_command": [],
+  "grading_script": "grade_container.py"
+}

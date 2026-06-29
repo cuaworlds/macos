@@ -1,0 +1,19 @@
+{
+  "id": "mypc-lockedin-accept-erin-hannon",
+  "source": {
+    "benchmark": "mypcbench",
+    "app": "LockedIn",
+    "port": 3014,
+    "note": "real seeded app via apps-container + reverse tunnel; deterministic container grade"
+  },
+  "task": {
+    "en": "Open LockedIn, the LinkedIn-like professional network app at http://localhost:3014 (it is already open in Safari and you are logged in). Go to your pending connection invitations and Accept the connection request from Erin Hannon."
+  },
+  "pre_command": {
+    "en": "open -a Safari 'http://localhost:3014/'"
+  },
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 5,
+  "grading_command": [],
+  "grading_script": "grade_container.py"
+}

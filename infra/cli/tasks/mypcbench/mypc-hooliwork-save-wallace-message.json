@@ -1,0 +1,19 @@
+{
+  "id": "mypc-hooliwork-save-wallace-message",
+  "source": {
+    "benchmark": "mypcbench",
+    "app": "HooliWork",
+    "port": 3005,
+    "note": "real seeded app via apps-container + reverse tunnel; deterministic container grade"
+  },
+  "task": {
+    "en": "Open HooliWork, the Slack-like team chat app at http://localhost:3005 (it is already open in Safari and you are logged in). Go to the #general channel, find David Wallace's message announcing that the quarterly review with corporate has moved to Friday, and save it for later (bookmark it)."
+  },
+  "pre_command": {
+    "en": "open -a Safari 'http://localhost:3005/'"
+  },
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 5,
+  "grading_command": [],
+  "grading_script": "grade_container.py"
+}

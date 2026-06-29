@@ -1,0 +1,19 @@
+{
+  "id": "mypc-hoolicalendar-add-reminder-philly",
+  "source": {
+    "benchmark": "mypcbench",
+    "app": "HooliCalendar",
+    "port": 3017,
+    "note": "real seeded app via apps-container + reverse tunnel; deterministic container grade"
+  },
+  "task": {
+    "en": "Open HooliCalendar, the calendar app at http://localhost:3017 (it is already open in Safari and you are logged in). Open the event 'Philadelphia, PA - weekend road trip with Holly, comedy show' (late April) and add a notification/reminder set to 42 minutes before the event."
+  },
+  "pre_command": {
+    "en": "open -a Safari 'http://localhost:3017/'"
+  },
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 5,
+  "grading_command": [],
+  "grading_script": "grade_container.py"
+}

@@ -63,12 +63,10 @@ up() {
 down()   { docker rm -f "$NAME" >/dev/null 2>&1 && echo "removed $NAME" || echo "not running"; }
 status() { docker exec "$NAME" supervisorctl status 2>/dev/null || docker ps --filter "name=$NAME"; }
 logs()   { docker logs -f "$NAME"; }
-# Per-run reset: re-run the generator from scratch (FORCE_RESEED) without a full
-# image reload. Restores every app DB to the pristine seeded state, then rebases dates.
-reset()  { docker exec -e FORCE_RESEED=1 "$NAME" python3 /opt/generator/generate.py \
-             --persona "$PERSONA" --world "$WORLD" --vm-id "$PERSONA" --home-dir /home/benchuser \
-           && docker exec "$NAME" python3 /opt/mypcbench/tools/reseed_dates_on_boot.py \
-           && docker restart "$NAME" >/dev/null && echo "reset + restarted $NAME"; }
+# Recreate from the image for a true clean slate. An in-place generator reseed
+# is an upsert: it re-adds seed rows but never deletes rows the app wrote during
+# a run, so it would not restore pristine state.
+reset()  { echo "reset: recreating $NAME from the pristine image..."; up; }
 
 case "${1:-up}" in
   pull) shift; pull "${1:-}" ;;
