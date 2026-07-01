@@ -174,7 +174,7 @@ export const inviteUser = (input: InviteUserInput) =>
 
 // -- backend shapes (only the fields we read) ------------------------------
 
-type BackendRun = { id: number; total_tasks: number; total_rollouts?: number; created_at: string }
+type BackendRun = { id: number; name?: string | null; total_tasks: number; total_rollouts?: number; created_at: string }
 type BackendRollout = {
   id: number
   task_id: number
@@ -203,6 +203,7 @@ type ArtifactManifest = {
 
 const runToInfo = (r: BackendRun): RunInfo => ({
   run_id: String(r.id),
+  name: r.name ?? undefined,
   // total_rollouts is finalized at end of push; fall back to task count for in-flight runs.
   n_rollouts: r.total_rollouts ?? r.total_tasks,
   mtime: Date.parse(r.created_at),
@@ -269,6 +270,14 @@ export type Trajectory = { steps: StepRecord[]; screenshots: Record<string, stri
 export async function listRuns(): Promise<RunInfo[]> {
   if (IS_LOCAL) return localJson<RunInfo[]>('/api/runs')
   return (await fetchAll<BackendRun>('/runs')).map(runToInfo)
+}
+
+export async function getRun(runId: string): Promise<RunInfo | null> {
+  if (IS_LOCAL) {
+    const runs = await localJson<RunInfo[]>('/api/runs')
+    return runs.find((r) => r.run_id === runId) ?? null
+  }
+  return runToInfo(await apiJson<BackendRun>(`/runs/${enc(runId)}`))
 }
 
 export async function listRollouts(runId: string): Promise<TaskResult[]> {

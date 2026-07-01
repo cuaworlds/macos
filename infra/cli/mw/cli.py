@@ -18,6 +18,7 @@ from benchmark.runner import aggregate_trials, build_work_items, run_task
 from benchmark.task import TASKS_ROOT, load_tasks
 from mw import auth, push
 from mw import remote as rmt
+from mw.naming import default_run_name
 
 
 def _outputs_root() -> Path:
@@ -201,6 +202,11 @@ def bench():
     help="Override the run directory name (default: <model>-<ts>).",
 )
 @click.option(
+    "--name",
+    default=None,
+    help="Human-friendly run name (default: <model>-<word>-<word>-<ts>).",
+)
+@click.option(
     "--backend",
     type=click.Choice(["use-computer", "kvm"]),
     default="use-computer",
@@ -289,6 +295,7 @@ def bench_run(
     model: str,
     tasks_spec: str,
     run_id: str | None,
+    name: str | None,
     backend: str,
     trials: int,
     pass_threshold: float,
@@ -339,12 +346,15 @@ def bench_run(
         tasks = load_tasks(ids=[t.strip() for t in tasks_spec.split(",") if t.strip()])
 
     run_id = run_id or f"{model}-{backend}-{int(time.time())}"
+    name = name or default_run_name(model)
     run_dir = _outputs_root() / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / "run.json").write_text(json.dumps({"name": name}, indent=2))
     # (task, trial) work items, trial-major. trial=None when trials==1 so the
     # output layout is byte-identical to single-trial runs.
     work_items = build_work_items(tasks, trials)
     click.echo(f"Run dir: {run_dir}")
+    click.echo(f"Name   : {name}")
     click.echo(f"Backend: {backend}")
     click.echo(f"Tasks  : {len(tasks)} ({', '.join(t.id[:8] for t in tasks)})")
     if trials > 1:

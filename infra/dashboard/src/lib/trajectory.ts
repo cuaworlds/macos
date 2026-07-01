@@ -54,6 +54,7 @@ export type TaskResult = {
 
 export type RunInfo = {
   run_id: string
+  name?: string
   n_rollouts: number
   mtime: number
   has_summary: boolean

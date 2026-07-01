@@ -186,10 +186,10 @@ pre {
 .rollout-header {
   margin-bottom: 12px;
 }
-.model-name {
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+.model-pill {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 3px 10px;
 }
 .rollout-meta {
   display: flex;

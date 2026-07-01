@@ -36,7 +36,7 @@ export default function RunsList() {
         <table className="table">
           <thead>
             <tr>
-              <th>Run ID</th>
+              <th>Name</th>
               <th>Rollouts</th>
               <th>Modified</th>
             </tr>
@@ -57,8 +57,9 @@ export default function RunsList() {
                     to={`/r/${encodeURIComponent(r.run_id)}`}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <code>{r.run_id}</code>
+                    {r.name ?? <code>{r.run_id}</code>}
                   </Link>
+                  {r.name && <div className="muted"><code>{r.run_id}</code></div>}
                 </td>
                 <td>{r.n_rollouts}</td>
                 <td className="muted">

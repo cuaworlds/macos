@@ -160,6 +160,10 @@ def push_run_dir(
         agg = json.loads(trials_path.read_text())
         run_meta.update(n_trials=agg.get("n_trials"), pass_threshold=agg.get("pass_threshold"))
 
+    # Run name persisted at run time; fall back to the dir name for older local runs.
+    name_path = run_dir / "run.json"
+    name = json.loads(name_path.read_text())["name"] if name_path.exists() else run_dir.name
+
     client.whoami()  # validate auth up front
 
     base_ids = sorted({r.get("base_task_id") or r["task_id"] for r in results})
@@ -174,6 +178,7 @@ def push_run_dir(
     run = client.create_run(
         {
             "session_id": run_dir.name,
+            "name": name,
             "environment": ENVIRONMENT,
             "total_tasks": len(base_ids),
             "status": "running",

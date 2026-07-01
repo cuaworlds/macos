@@ -208,7 +208,7 @@ export default function TrajectoryView() {
 
       {result?.model && (
         <div className="rollout-header">
-          <div className="model-name">{result.model}</div>
+          <span className="pill blue model-pill">{result.model}</span>
           <div className="rollout-meta">
             {result.category && <span className="meta-item">{result.category}</span>}
             {typeof result.passed === 'boolean' && (

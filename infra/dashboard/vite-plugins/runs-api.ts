@@ -102,8 +102,16 @@ async function listRuns(root: string) {
           nRollouts = subdirs.filter((s) => s.isDirectory()).length
         }
 
+        let name: string | undefined
+        try {
+          name = JSON.parse(await fs.readFile(path.join(runDir, 'run.json'), 'utf8')).name
+        } catch {
+          name = undefined
+        }
+
         return {
           run_id: d.name,
+          name,
           n_rollouts: nRollouts,
           mtime: stat.mtimeMs,
           has_summary: summary !== null,

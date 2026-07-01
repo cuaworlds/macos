@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Loading } from '../components/Loading'
-import { getTaskDef, listRollouts } from '../lib/api'
+import { getRun, getTaskDef, listRollouts } from '../lib/api'
 import {
   bandOf,
   baseTaskId,
@@ -17,6 +17,7 @@ export default function RunDetail() {
   const { runId = '' } = useParams()
   const navigate = useNavigate()
   const [tasks, setTasks] = useState<TaskResult[] | null>(null)
+  const [name, setName] = useState<string | undefined>(undefined)
   const [err, setErr] = useState<string | null>(null)
   const [labels, setLabels] = useState<Record<string, string>>({})
   const [grouped, setGrouped] = useState(true)
@@ -27,6 +28,9 @@ export default function RunDetail() {
     listRollouts(runId)
       .then(setTasks)
       .catch((e) => setErr(String(e)))
+    getRun(runId)
+      .then((r) => setName(r?.name))
+      .catch(() => setName(undefined))
   }, [runId])
 
   const groups = useMemo(() => (tasks ? groupTasks(tasks) : []), [tasks])
@@ -89,11 +93,11 @@ export default function RunDetail() {
       <div className="crumbs">
         <Link to="/">CUA Worlds</Link>
         <span className="sep">/</span>
-        <span>{runId}</span>
+        <span>{name ?? runId}</span>
       </div>
 
       <div className="run-head">
-        <h1 className="h1">Rollouts</h1>
+        <h1 className="h1">{name ?? 'Rollouts'}</h1>
         {tasks && tasks.length > 0 && (
           <div className="run-meta muted">
             {groups.length} task{groups.length === 1 ? '' : 's'}
