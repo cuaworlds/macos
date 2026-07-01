@@ -1,0 +1,13 @@
+{
+  "id": "mypc-port-movie-monday",
+  "source": {"benchmark": "mypcbench", "ported_from": "long_horizon-f057", "apps": ["SprintBoard:3013", "HooliCalendar:3017", "HangryDash:3007", "LockedIn:3014", "TextEdit"], "note": "FULL/verifiable multi-app port; office doc on TextEdit; web grade (65) folds with in-guest file grade (35)"},
+  "task": {"en": "Relaunch Movie Monday across these seeded apps open in Safari, plus TextEdit. SprintBoard http://localhost:3013, HooliCalendar http://localhost:3017, HangryDash http://localhost:3007, LockedIn http://localhost:3014. (1) On the 'Movie Monday Program' board in SprintBoard, add 6 tasks, each with a title that starts with 'MM:' (for example 'MM: projector rental'). (2) In HooliCalendar, add an event titled 'Movie Monday — Outdoor Relaunch'. (3) In HangryDash, place a dessert order. (4) On LockedIn, post an update that contains the exact phrase 'Movie Monday is back'. (5) In TextEdit, write a short relaunch plan and save it as ~/Documents/Work/movie_monday_plan.txt (create the Work folder; use plain text)."},
+  "pre_command": {"en": "mkdir -p ~/Documents && open -a Safari 'http://localhost:3013/' 'http://localhost:3017/' 'http://localhost:3007/' 'http://localhost:3014/'"},
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 6,
+  "grading_command": [
+    ["ls ~/Documents/Work/ 2>/dev/null | grep -qi movie && echo True || echo False", 20],
+    ["grep -rqi 'movie monday' ~/Documents/Work/ 2>/dev/null && echo True || echo False", 15]
+  ],
+  "grading_script": "grade_container.py"
+}

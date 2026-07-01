@@ -1,0 +1,10 @@
+{
+  "id": "mypc-port-cancel-jamaica",
+  "source": {"benchmark": "mypcbench", "ported_from": "situated_action-f008", "apps": ["Dinoco:3011", "HooliCalendar:3017", "HooliChat:3004", "Cheskepdia:3012"], "note": "FULL/verifiable multi-app port; deterministic container grade"},
+  "task": {"en": "The Jamaica trip is off — cancel it across four seeded apps open in Safari: Dinoco Airlines http://localhost:3011, HooliCalendar http://localhost:3017, HooliChat http://localhost:3004, Cheskepdia http://localhost:3012. (1) In Dinoco, cancel flight DN1562 (AVP to Montego Bay). (2) In HooliCalendar, cancel the 'Sandals Montego Bay' Jamaica trip events. (3) In HooliChat, send Jim Halpert a direct message telling him the trip is cancelled (use the word 'cancelled'). (4) In Cheskepdia, open the Sandals Montego Bay booking and send the host a message requesting cancellation."},
+  "pre_command": {"en": "open -a Safari 'http://localhost:3011/' 'http://localhost:3017/' 'http://localhost:3004/' 'http://localhost:3012/'"},
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 5,
+  "grading_command": [],
+  "grading_script": "grade_container.py"
+}

@@ -1,0 +1,13 @@
+{
+  "id": "mypc-port-diversity-day",
+  "source": {"benchmark": "mypcbench", "ported_from": "long_horizon-f056", "apps": ["SprintBoard:3013", "TableFind:3008", "HooliCalendar:3017", "LockedIn:3014", "TextEdit"], "note": "FULL/verifiable multi-app port; office doc on TextEdit; web grade (65) folds with in-guest file grade (35)"},
+  "task": {"en": "Plan Diversity Day across these seeded apps open in Safari, plus TextEdit. SprintBoard http://localhost:3013, TableFind http://localhost:3008, HooliCalendar http://localhost:3017, LockedIn http://localhost:3014. (1) On the 'Diversity Day Planning 2026' board in SprintBoard, add 5 tasks, each with a title that starts with 'DD:' (for example 'DD: catering scope'). (2) In TableFind, reserve a venue and put 'Diversity Day' in the special request field. (3) In HooliCalendar, add an event titled 'Diversity Day 2026'. (4) On LockedIn, post an update that contains the phrase 'celebrating what makes Scranton'. (5) In TextEdit, write a run-of-show and save it as ~/Documents/Work/diversity_day_runofshow.txt (create the Work folder; use plain text)."},
+  "pre_command": {"en": "mkdir -p ~/Documents && open -a Safari 'http://localhost:3013/' 'http://localhost:3008/' 'http://localhost:3017/' 'http://localhost:3014/'"},
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 6,
+  "grading_command": [
+    ["ls ~/Documents/Work/ 2>/dev/null | grep -qi diversity && echo True || echo False", 20],
+    ["grep -rqi 'diversity' ~/Documents/Work/ 2>/dev/null && echo True || echo False", 15]
+  ],
+  "grading_script": "grade_container.py"
+}

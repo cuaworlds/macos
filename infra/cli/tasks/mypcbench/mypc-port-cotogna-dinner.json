@@ -1,0 +1,10 @@
+{
+  "id": "mypc-port-cotogna-dinner",
+  "source": {"benchmark": "mypcbench", "ported_from": "situated_action-f007", "apps": ["TableFind:3008", "HooliCalendar:3017"], "note": "FULL/verifiable multi-app port; deterministic container grade"},
+  "task": {"en": "Two seeded apps are open in Safari: TableFind (restaurant reservations) at http://localhost:3008 and HooliCalendar at http://localhost:3017. (1) In TableFind, book a table at Cotogna (the Downtown Scranton Italian restaurant) for next Wednesday at 6:30 PM, party of 6, and confirm the reservation. (2) In HooliCalendar, add a calendar event titled exactly 'Cotogna Dinner — party of 6' for that Wednesday evening."},
+  "pre_command": {"en": "open -a Safari 'http://localhost:3008/' 'http://localhost:3017/'"},
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 5,
+  "grading_command": [],
+  "grading_script": "grade_container.py"
+}

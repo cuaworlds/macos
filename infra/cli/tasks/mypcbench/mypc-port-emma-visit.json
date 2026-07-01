@@ -1,0 +1,12 @@
+{
+  "id": "mypc-port-emma-visit",
+  "source": {"benchmark": "mypcbench", "ported_from": "long_horizon-f071", "apps": ["Cheskepdia:3012", "TableFind:3008", "Gringotts:3001", "HooliCalendar:3017", "LockedIn:3014", "TextEdit"], "note": "FULL/verifiable multi-app port; office doc on TextEdit; web grade (80) folds with in-guest file grade (20)"},
+  "task": {"en": "Plan your sister Emma's visit to Scranton across these seeded apps open in Safari, plus TextEdit. Cheskepdia http://localhost:3012, TableFind http://localhost:3008, Gringotts http://localhost:3001, HooliCalendar http://localhost:3017, LockedIn http://localhost:3014. (1) In Cheskepdia, book any Scranton-area stay. (2) In TableFind, reserve 2 dinners, each with 'Emma visit' in the special request field. (3) In Gringotts, send a Zelle payment of exactly $150 to Emma with the memo 'Emma visit'. (4) In HooliCalendar, add an event titled 'Emma Scranton Visit'. (5) On LockedIn, post an update that contains the phrase 'proud big-brother moment'. (6) In TextEdit, write a short welcome card and save it as ~/Documents/Personal/emma_welcome.txt (create the Personal folder; use plain text)."},
+  "pre_command": {"en": "mkdir -p ~/Documents && open -a Safari 'http://localhost:3012/' 'http://localhost:3008/' 'http://localhost:3001/' 'http://localhost:3017/' 'http://localhost:3014/'"},
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 6,
+  "grading_command": [
+    ["ls ~/Documents/Personal/ 2>/dev/null | grep -qi emma && echo True || echo False", 20]
+  ],
+  "grading_script": "grade_container.py"
+}

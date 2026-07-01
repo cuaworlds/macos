@@ -202,6 +202,79 @@ SPECS: dict[str, tuple[str, str, Callable[[int], bool], str]] = {
 }
 
 
+# Multi-checkpoint tasks (ported MyPCBench "FULL/verifiable" multi-app tasks).
+# task_id -> list of (app, count-query, predicate(n)->bool, weight, label). The grade
+# is the weighted sum; max_score = sum(weights). Web checkpoints only — native file
+# checkpoints (TextEdit docs) live in the task's in-guest `grading_command` and the
+# runner folds the two together, so these weights + grading_command weights total 100.
+MULTI: dict[str, list[tuple[str, str, Callable[[int], bool], float, str]]] = {
+    "mypc-port-cotogna-dinner": [
+        ("tablefind", "SELECT count(*) FROM reservations WHERE restaurant_id=50 AND party_size=6 AND time='18:30' AND status='confirmed';",
+         lambda n: n >= 1, 50, "Cotogna reservation party-6 @18:30 confirmed"),
+        ("hoolicalendar", "SELECT count(*) FROM events WHERE title LIKE '%Cotogna%';",
+         lambda n: n >= 1, 50, "HooliCalendar event titled Cotogna"),
+    ],
+    "mypc-port-cancel-jamaica": [
+        ("dinoco-airlines", "SELECT count(*) FROM flights WHERE flight_number='DN1562' AND status='cancelled';",
+         lambda n: n >= 1, 30, "Dinoco DN1562 cancelled"),
+        ("hoolicalendar", "SELECT count(*) FROM events WHERE title LIKE '%Montego Bay%' AND status!='cancelled';",
+         lambda n: n == 0, 25, "no live Montego-Bay calendar events remain"),
+        ("buzzchat", "SELECT count(*) FROM messages WHERE conversation_id='conv-0000' AND sender_email LIKE '%michael%' AND lower(content) LIKE '%cancel%';",
+         lambda n: n >= 1, 25, "HooliChat DM to Jim mentions cancel"),
+        ("cheskepdia", "SELECT count(*) FROM booking_messages WHERE booking_id=2 AND sender_type='guest';",
+         lambda n: n > 2, 20, "new Cheskepdia host-message on Sandals booking (baseline 2)"),
+    ],
+    "mypc-port-jamaica-etaxi": [
+        ("etaxi", "SELECT count(*) FROM ride_requests WHERE dropoff LIKE '%AVP%';",
+         lambda n: n >= 1, 30, "eTaxi outbound ride to AVP"),
+        ("etaxi", "SELECT count(*) FROM ride_requests WHERE pickup LIKE '%AVP%';",
+         lambda n: n >= 1, 30, "eTaxi return ride from AVP"),
+        ("etaxi", "SELECT count(*) FROM saved_locations WHERE label LIKE '%Dundies%';",
+         lambda n: n >= 1, 20, "saved location 'Dundies Venue'"),
+        ("etaxi", "SELECT count(*) FROM saved_locations WHERE label LIKE '%Improv%';",
+         lambda n: n >= 1, 20, "saved location 'Scranton Improv Academy'"),
+    ],
+    "mypc-port-dundies-proofread": [
+        ("mail", "SELECT count(*) FROM emails WHERE to_email LIKE '%pam%' AND has_attachment=1;",
+         lambda n: n >= 1, 60, "email to Pam with an attachment"),
+        ("mail", "SELECT count(*) FROM emails WHERE to_email LIKE '%pam%' AND lower(body) LIKE '%proofread%';",
+         lambda n: n >= 1, 40, "email to Pam asks her to proofread"),
+    ],
+    "mypc-port-movie-monday": [  # web 65 + grading_command file 35
+        ("sprintboard", "SELECT count(*) FROM tasks WHERE project_id=3 AND title LIKE 'MM:%';",
+         lambda n: n >= 6, 20, "6 'MM:' tasks on Movie Monday board"),
+        ("hoolicalendar", "SELECT count(*) FROM events WHERE title LIKE '%Movie Monday%Outdoor%';",
+         lambda n: n >= 1, 15, "Movie Monday Outdoor calendar event"),
+        ("lockedin", "SELECT count(*) FROM posts WHERE lower(content) LIKE '%movie monday is back%';",
+         lambda n: n >= 1, 15, "LockedIn post 'Movie Monday is back'"),
+        ("hangrydash", "SELECT count(*) FROM orders WHERE user_email LIKE '%michael%';",
+         lambda n: n > 397, 15, "new HangryDash dessert order (baseline 397)"),
+    ],
+    "mypc-port-diversity-day": [  # web 65 + grading_command file 35
+        ("sprintboard", "SELECT count(*) FROM tasks WHERE project_id=2 AND title LIKE 'DD:%';",
+         lambda n: n >= 5, 20, "5 'DD:' tasks on Diversity Day board"),
+        ("tablefind", "SELECT count(*) FROM reservations WHERE special_requests LIKE '%Diversity Day%';",
+         lambda n: n >= 1, 15, "TableFind reservation tagged 'Diversity Day'"),
+        ("hoolicalendar", "SELECT count(*) FROM events WHERE title LIKE '%Diversity Day 2026%';",
+         lambda n: n >= 1, 15, "Diversity Day 2026 calendar event"),
+        ("lockedin", "SELECT count(*) FROM posts WHERE lower(content) LIKE '%celebrating what makes scranton%';",
+         lambda n: n >= 1, 15, "LockedIn 'celebrating what makes Scranton' post"),
+    ],
+    "mypc-port-emma-visit": [  # web 80 + grading_command file 20
+        ("vaultbank", "SELECT count(*) FROM zelle_transfers WHERE direction='sent' AND amount=150 AND (lower(contact_name) LIKE '%emma%' OR lower(memo) LIKE '%emma%');",
+         lambda n: n >= 1, 20, "Gringotts Zelle $150 to Emma"),
+        ("tablefind", "SELECT count(*) FROM reservations WHERE special_requests LIKE '%Emma visit%';",
+         lambda n: n >= 2, 15, "2 TableFind dinners tagged 'Emma visit'"),
+        ("hoolicalendar", "SELECT count(*) FROM events WHERE title LIKE '%Emma Scranton Visit%';",
+         lambda n: n >= 1, 15, "Emma Scranton Visit calendar event"),
+        ("lockedin", "SELECT count(*) FROM posts WHERE lower(content) LIKE '%proud big-brother%';",
+         lambda n: n >= 1, 15, "LockedIn 'proud big-brother moment' post"),
+        ("cheskepdia", "SELECT count(*) FROM bookings;",
+         lambda n: n > 7, 15, "new Cheskepdia booking (baseline 7)"),
+    ],
+}
+
+
 def count(app: str, query: str) -> int:
     db = DB_PATHS.get(app, f"/data/vms/{VM_ID}/{app}.sqlite")
     out = subprocess.run(
@@ -221,6 +294,21 @@ def main() -> None:
         ctx = {}
     task_id = ctx.get("task_id", "")
     try:
+        multi = MULTI.get(task_id)
+        if multi is not None:
+            cps, score, maxs = [], 0.0, 0.0
+            for app, query, predicate, weight, label in multi:
+                n = count(app, query)
+                ok = predicate(n)
+                maxs += weight
+                score += weight if ok else 0.0
+                cps.append({"name": label, "passed": ok, "detail": f"{label} = {n}", "weight": weight})
+            print(json.dumps({
+                "score": round(score, 2), "max_score": round(maxs, 2), "checkpoints": cps,
+                "log": f"{task_id}: web {score:g}/{maxs:g} — " + "; ".join(
+                    f"{'PASS' if c['passed'] else 'FAIL'} {c['name']}" for c in cps),
+            }))
+            return
         spec = SPECS.get(task_id)
         if spec is None:
             raise KeyError(f"no grader registered for {task_id!r}")

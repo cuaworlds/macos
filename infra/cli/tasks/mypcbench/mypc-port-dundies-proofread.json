@@ -1,0 +1,10 @@
+{
+  "id": "mypc-port-dundies-proofread",
+  "source": {"benchmark": "mypcbench", "ported_from": "situated_action-f032", "apps": ["HooliMail:3016", "Files"], "note": "FULL/verifiable port; doc seeded in pre_command; deterministic container grade on mail attachment"},
+  "task": {"en": "In HooliMail (the email app open in Safari at http://localhost:3016), compose a new email to Pam Beesly (pam.beesly@dundermifflin.com). Attach the file at ~/Documents/Dundies_2026_Categories.txt, write a short message asking her to proofread it, and send the email."},
+  "pre_command": {"en": "mkdir -p ~/Documents && printf 'Dundies 2026 Categories\\n1. Whitest Sneakers\\n2. Bushiest Beaver\\n3. Hottest in the Office\\n4. Best Dad\\n5. Spiciest Curry\\n6. Tight Ship\\n' > ~/Documents/Dundies_2026_Categories.txt && open -a Safari 'http://localhost:3016/'"},
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 5,
+  "grading_command": [],
+  "grading_script": "grade_container.py"
+}

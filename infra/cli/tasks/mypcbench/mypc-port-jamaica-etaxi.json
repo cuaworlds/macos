@@ -1,0 +1,10 @@
+{
+  "id": "mypc-port-jamaica-etaxi",
+  "source": {"benchmark": "mypcbench", "ported_from": "hard_app-f011", "apps": ["eTaxi:3006"], "note": "FULL/verifiable multi-app port; deterministic container grade"},
+  "task": {"en": "In eTaxi (the ride app open in Safari at http://localhost:3006), set up airport transport for a trip: (1) book a ride whose destination is AVP airport, and (2) book a return ride whose pickup is AVP airport. Then add two saved locations in eTaxi: one labeled 'Dundies Venue' and one labeled 'Scranton Improv Academy'."},
+  "pre_command": {"en": "open -a Safari 'http://localhost:3006/'"},
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 5,
+  "grading_command": [],
+  "grading_script": "grade_container.py"
+}

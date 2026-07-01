@@ -1,0 +1,13 @@
+{
+  "id": "mypc-port-jamaica-itinerary",
+  "source": {"benchmark": "mypcbench", "ported_from": "cua_only-f024", "apps": ["Dinoco:3011", "Cheskepdia:3012", "TextEdit"], "note": "FULL/verifiable port; office doc ported to TextEdit (gold image has no iWork); graded on saved file content"},
+  "task": {"en": "Create a Jamaica trip itinerary as a plain-text document using TextEdit. Look up the details in the seeded apps open in Safari if you need them: Dinoco Airlines http://localhost:3011 (the flight is DN1562) and Cheskepdia http://localhost:3012 (the Sandals Montego Bay hotel booking). In TextEdit, write an itinerary with three sections — Flight, Hotel, and Daily Schedule — that includes the flight number DN1562 and the Sandals Montego Bay hotel. Save it as a plain-text file at ~/Documents/Trips/jamaica_itinerary.txt (create the Trips folder if needed; use Format > Make Plain Text)."},
+  "pre_command": {"en": "mkdir -p ~/Documents && open -a Safari 'http://localhost:3011/' 'http://localhost:3012/'"},
+  "before_action_delay_seconds": 6,
+  "before_grading_delay_seconds": 6,
+  "grading_command": [
+    ["ls ~/Documents/Trips/ 2>/dev/null | grep -qi jamaica && echo True || echo False", 40],
+    ["grep -rqi 'DN1562' ~/Documents/Trips/ 2>/dev/null && echo True || echo False", 30],
+    ["grep -rqi 'sandals' ~/Documents/Trips/ 2>/dev/null && echo True || echo False", 30]
+  ]
+}

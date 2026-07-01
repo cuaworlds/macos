@@ -75,7 +75,10 @@ class WorldsSession:
         for iid in self.ids.values():
             delete_instance(iid, self.base)
 
-    def render(self, text: str) -> str:
+    def render(self, text: str, autologin: bool = False) -> str:
         for port, url in self.url_by_port.items():
+            # `?_autologin=1` pre-warms Michael's session; worlds instances aren't logged in by default.
+            if autologin:
+                text = text.replace(f"http://localhost:{port}/", f"{url}/?_autologin=1")
             text = text.replace(f"http://localhost:{port}", url).replace(f"localhost:{port}", url)
         return text

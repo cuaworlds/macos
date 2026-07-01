@@ -302,7 +302,7 @@ def run_task(
             rtask = replace(
                 task,
                 instruction=wsession.render(task.instruction),
-                pre_command=wsession.render(task.pre_command),
+                pre_command=wsession.render(task.pre_command, autologin=True),
             )
 
         if rtask.pre_command:
