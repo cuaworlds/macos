@@ -283,6 +283,14 @@ def bench():
     "like the MyPCBench apps container). Accepts a range '3001-3017' or a list '3001,3016'. "
     "Requires the sidecar to be listening on those host ports (e.g. run-apps.sh up).",
 )
+@click.option(
+    "--apps",
+    type=click.Choice(["docker", "worlds"]),
+    default="docker",
+    show_default=True,
+    help="App backend for MyPCBench tasks: the local 'docker' sidecar, or per-rollout "
+    "'worlds' hosted instances (no tunnel needed; graded over each instance's REST API).",
+)
 def bench_run(
     model: str,
     tasks_spec: str,
@@ -302,6 +310,7 @@ def bench_run(
     kvm_ssh_login: str | None,
     kvm_disk_mode: str,
     kvm_app_tunnel: str | None,
+    apps: str,
 ) -> None:
     """Run benchmark tasks against a model."""
     provider = MODEL_CONFIG[model].provider
@@ -379,11 +388,11 @@ def bench_run(
             fleet_size=kvm_fleet_size, host=kvm_host,
             base_volume=kvm_base_volume, ram_gb=kvm_ram_gb, vcpu=kvm_vcpu,
             ssh_key=kvm_ssh_key, ssh_login=kvm_ssh_login, disk_mode=kvm_disk_mode,
-            resolved_env=resolved_env, app_tunnel_ports=app_tunnel_ports,
+            resolved_env=resolved_env, app_tunnel_ports=app_tunnel_ports, apps=apps,
         )
     else:
         # Managed SDK: sequential, one fresh sandbox per (task, trial).
-        results = [run_task(model, t, run_dir, trial=k) for t, k in work_items]
+        results = [run_task(model, t, run_dir, trial=k, apps=apps) for t, k in work_items]
 
     results_dicts = [asdict(r) for r in results]
     if trials > 1:
@@ -455,7 +464,7 @@ def _preflight_app_tunnel(host: str, ports: tuple[int, ...]) -> None:
 
 def _run_kvm(model, work_items, run_dir, *, fleet_size, host, base_volume, ram_gb, vcpu,
              ssh_key=None, ssh_login=None, disk_mode="overlay", resolved_env=None,
-             app_tunnel_ports=()):
+             app_tunnel_ports=(), apps="docker"):
     """Boot a KVM fleet, run all (task, trial) items concurrently across it, tear down."""
     from concurrent.futures import ThreadPoolExecutor
 
@@ -485,7 +494,7 @@ def _run_kvm(model, work_items, run_dir, *, fleet_size, host, base_volume, ram_g
             return list(
                 pool.map(
                     lambda item: run_task(
-                        model, item[0], run_dir, backend="kvm", fleet=fleet, trial=item[1]
+                        model, item[0], run_dir, backend="kvm", fleet=fleet, trial=item[1], apps=apps
                     ),
                     work_items,
                 )

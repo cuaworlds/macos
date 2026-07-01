@@ -6,7 +6,7 @@ import subprocess
 import tempfile
 import time
 import traceback
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Protocol
 
@@ -16,7 +16,8 @@ from benchmark.config import MAX_STEPS, MODEL_CONFIG
 from benchmark.env import Env, make_env
 from benchmark.grading import fold_script_result, normalize_score
 from benchmark.log import get_logger
-from benchmark.task import Task
+from benchmark.task import TASKS_ROOT, Task
+from benchmark import worlds
 
 log = get_logger()
 
@@ -217,6 +218,28 @@ def run_grading_script(task: Task, env: "Env", task_dir: Path) -> dict | None:
         return {"score": 0, "max_score": 0, "checkpoints": [], "log": f"no JSON output (rc={proc.returncode})"}
 
 
+def run_worlds_grading(task: Task, urls: dict[str, str]) -> dict | None:
+    """Grade a worlds rollout via the REST grader, passing the live instance URLs."""
+    script = TASKS_ROOT / "mypcbench" / "grade_worlds.py"
+    if not script.exists():
+        return {"score": 0, "max_score": 0, "checkpoints": [], "log": f"grader missing: {script}"}
+    ctx = {"task_id": task.id, "category": task.category, "worlds_instances": urls}
+    log.info(f"grading_script: grade_worlds.py ({', '.join(urls)})")
+    try:
+        proc = subprocess.run(
+            ["uv", "run", "python", str(script)],
+            input=json.dumps(ctx), capture_output=True, text=True, timeout=120,
+        )
+    except subprocess.TimeoutExpired:
+        return {"score": 0, "max_score": 0, "checkpoints": [], "log": "worlds grader timeout"}
+    for line in reversed([ln for ln in (proc.stdout or "").splitlines() if ln.strip()]):
+        try:
+            return json.loads(line)
+        except json.JSONDecodeError:
+            continue
+    return {"score": 0, "max_score": 0, "checkpoints": [], "log": f"no JSON (rc={proc.returncode})"}
+
+
 def run_task(
     model_id: str,
     task: Task,
@@ -225,6 +248,7 @@ def run_task(
     backend: str = "use-computer",
     fleet: "KvmFleet | None" = None,
     trial: int | None = None,
+    apps: str = "docker",
 ) -> TaskResult:
     # When running multiple trials, each rollout gets a FLAT sibling dir/task_id
     # `<task.id>__t<NN>` under run_dir (nested dirs break the dashboard's routing).
@@ -241,6 +265,7 @@ def run_task(
     t0 = time.time()
     env: Env | None = None
     slot = None
+    wsession: "worlds.WorldsSession | None" = None
     status = "error"
     error_str = ""
     score: float = 0
@@ -266,8 +291,22 @@ def run_task(
             f"(scale {env.scale_x:.2f}x{env.scale_y:.2f})"
         )
 
-        if task.pre_command:
-            env.run_pre_command(task)
+        # Worlds mode: spin up per-rollout hosted instances and rewrite the task's
+        # localhost:<port> URLs to the live instance URLs (task JSON stays untouched).
+        rtask = task
+        if apps == "worlds":
+            ports = worlds.ports_in(task.pre_command, task.instruction)
+            if not ports:
+                raise ValueError(f"{task.id}: --apps worlds but no localhost:<port> in task")
+            wsession = worlds.WorldsSession(ports).open()
+            rtask = replace(
+                task,
+                instruction=wsession.render(task.instruction),
+                pre_command=wsession.render(task.pre_command),
+            )
+
+        if rtask.pre_command:
+            env.run_pre_command(rtask)
         if task.before_action_delay:
             time.sleep(task.before_action_delay)
 
@@ -291,14 +330,17 @@ def run_task(
             for a in rec.actions:
                 log.info(f"[{tag}]   action: {summarize_action(a)}")
 
-        status = drive_agent(agent, task.instruction, MAX_STEPS, on_step=_on_step)
+        status = drive_agent(agent, rtask.instruction, MAX_STEPS, on_step=_on_step)
 
         if task.before_grading_delay:
             time.sleep(task.before_grading_delay)
-        score, max_score, grade_log = env.grade(task)
-        # Optional host-side verifier — runs on the Linux host after in-guest grading,
-        # and its score/max_score fold additively into the in-guest checkpoints.
-        script_result = run_grading_script(task, env, task_dir)
+        score, max_score, grade_log = env.grade(rtask)
+        # Host-side verifier folds additively into the in-guest checkpoints. Worlds
+        # mode reads the live instance REST APIs; docker mode runs the task's script.
+        if apps == "worlds" and wsession is not None:
+            script_result = run_worlds_grading(task, wsession.url_by_app)
+        else:
+            script_result = run_grading_script(task, env, task_dir)
         score, max_score, grade_log = fold_script_result(score, max_score, grade_log, script_result)
         score = normalize_score(score)
         max_score = normalize_score(max_score)
@@ -307,6 +349,11 @@ def run_task(
         log.error(f"[{tag}] ERROR {type(e).__name__}: {e}\n{traceback.format_exc()}")
         error_str = f"{type(e).__name__}: {e}"
     finally:
+        if wsession is not None:
+            try:
+                wsession.close()
+            except Exception as e:
+                log.warning(f"[{tag}] worlds teardown failed: {e}")
         if agent is not None:
             try:
                 agent.save_logs()
